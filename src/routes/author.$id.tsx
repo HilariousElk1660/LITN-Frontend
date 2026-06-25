@@ -26,7 +26,7 @@ function AuthorPage() {
       <div className="mx-auto max-w-5xl px-6 pt-16 pb-20">
         <div className="flex items-center gap-6">
           <div className="grid h-24 w-24 place-items-center rounded-full bg-gradient-teal font-display text-4xl text-primary-foreground">
-            {author.author.split(" ").map((n) => n[0]).join("")}
+            {author.author.split(" ").map((n: string) => n[0]).join("")}
           </div>
           <div>
             <h1 className="font-display text-4xl">{author.author}</h1>
@@ -42,7 +42,7 @@ function AuthorPage() {
         <div className="mt-14">
           <h2 className="font-display text-2xl">Published works</h2>
           <div className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
-            {works.map((b) => <BookCard key={b.id} book={b} />)}
+            {works.map((b: typeof works[number]) => <BookCard key={b.id} book={b} />)}
           </div>
         </div>
 
