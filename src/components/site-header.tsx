@@ -24,6 +24,11 @@ export function SiteHeader() {
           </Link>
           <a href="#feedback" className="transition-colors hover:text-foreground">Feedback</a>
           <a href="#authors" className="transition-colors hover:text-foreground">Ask the Author</a>
+          {isAdmin && (
+            <Link to="/admin" className="text-teal-bright transition-colors hover:text-foreground" activeProps={{ className: "text-foreground" }}>
+              Admin
+            </Link>
+          )}
         </nav>
         <div className="flex items-center gap-2">
           {loading ? null : user ? (

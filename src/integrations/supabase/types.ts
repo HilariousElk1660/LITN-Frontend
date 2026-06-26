@@ -41,6 +41,54 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_requests: {
+        Row: {
+          amount: number | null
+          book_id: string
+          book_title: string
+          created_at: string
+          currency: string
+          id: string
+          note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["purchase_status"]
+          updated_at: string
+          user_email: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          book_id: string
+          book_title: string
+          created_at?: string
+          currency?: string
+          id?: string
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["purchase_status"]
+          updated_at?: string
+          user_email: string
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          book_id?: string
+          book_title?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["purchase_status"]
+          updated_at?: string
+          user_email?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -78,6 +126,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      purchase_status: "pending" | "paid" | "declined"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -206,6 +255,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      purchase_status: ["pending", "paid", "declined"],
     },
   },
 } as const

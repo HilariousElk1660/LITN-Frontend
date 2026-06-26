@@ -1,6 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { PurchaseRequestButton } from "@/components/purchase-request-button";
 import { getBook } from "@/lib/books";
 
 export const Route = createFileRoute("/book/$id")({
@@ -56,9 +57,7 @@ function BookPage() {
             >
               Start reading
             </Link>
-            <button className="mt-2 w-full rounded-full border border-border bg-surface px-5 py-3 text-sm">
-              Add to library
-            </button>
+            <PurchaseRequestButton bookId={book.id} bookTitle={book.title} />
           </div>
           <div>
             <div className="text-xs uppercase tracking-widest text-teal-bright">{book.genre} · {book.status}</div>
