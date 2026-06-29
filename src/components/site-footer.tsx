@@ -4,30 +4,22 @@ import logo from "@/assets/litn-logo.asset.json";
 export function SiteFooter() {
   return (
     <footer className="mt-32 border-t border-border/60 bg-surface/40">
-      <div className="mx-auto grid max-w-7xl gap-10 px-6 py-16 md:grid-cols-4">
+      <div className="mx-auto grid max-w-7xl gap-10 px-6 py-16 md:grid-cols-3">
         <div>
           <div className="flex items-center gap-2">
             <img src={logo.url} alt="" className="h-8 w-8 rounded-md" />
             <span className="font-display text-lg">LITN</span>
           </div>
-          <p className="mt-3 text-sm text-muted-foreground">
-            A community-first reading platform for emerging and established authors.
+          <p className="mt-3 max-w-xs text-sm text-muted-foreground">
+            A quieter place to read — serialised chapters and complete novels in a beautifully focused reader.
           </p>
         </div>
         <div>
           <h4 className="text-sm font-semibold">Read</h4>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            <li><Link to="/catalogue">Catalogue</Link></li>
-            <li><a href="#serialised">Serialised</a></li>
-            <li><a href="#new">New releases</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="text-sm font-semibold">Community</h4>
-          <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            <li><a href="#authors">Ask the Author</a></li>
-            <li><a href="#rooms">Book Rooms</a></li>
-            <li><a href="#feedback">Feedback</a></li>
+            <li><Link to="/catalogue" className="hover:text-foreground">Catalogue</Link></li>
+            <li><Link to="/catalogue" search={{ q: "" }} className="hover:text-foreground">Serialised</Link></li>
+            <li><Link to="/catalogue" search={{ q: "" }} className="hover:text-foreground">New releases</Link></li>
           </ul>
         </div>
         <div>

@@ -19,11 +19,12 @@ export function SiteHeader() {
           </div>
         </Link>
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
+          <Link to="/" className="transition-colors hover:text-foreground" activeOptions={{ exact: true }} activeProps={{ className: "text-foreground" }}>
+            Home
+          </Link>
           <Link to="/catalogue" className="transition-colors hover:text-foreground" activeProps={{ className: "text-foreground" }}>
             Catalogue
           </Link>
-          <a href="#feedback" className="transition-colors hover:text-foreground">Feedback</a>
-          <a href="#authors" className="transition-colors hover:text-foreground">Ask the Author</a>
           {isAdmin && (
             <Link to="/admin" className="text-teal-bright transition-colors hover:text-foreground" activeProps={{ className: "text-foreground" }}>
               Admin

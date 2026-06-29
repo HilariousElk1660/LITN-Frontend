@@ -46,16 +46,9 @@ function AuthorPage() {
           </div>
         </div>
 
-        <div className="mt-16 rounded-2xl border border-border/60 bg-surface p-8">
-          <h2 className="font-display text-2xl">Author's Room</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Ask a question. {author.author.split(" ")[0]} answers personally each week.</p>
-          <form className="mt-6 flex gap-2">
-            <input className="flex-1 rounded-full border border-border bg-background/60 px-4 py-2 text-sm" placeholder="Write your question…" />
-            <button className="rounded-full bg-gradient-teal px-5 py-2 text-sm font-medium text-primary-foreground">Send</button>
-          </form>
-        </div>
       </div>
       <SiteFooter />
     </div>
   );
 }
+
