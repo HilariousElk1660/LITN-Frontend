@@ -22,7 +22,23 @@ export function PurchaseRequestButton({ bookId, bookTitle }: { bookId: string; b
       .limit(1)
       .maybeSingle()
       .then(({ data }) => setStatus((data?.status as Status) ?? null));
+
+    const channel = supabase
+      .channel(`pr_user_${user.id}_${bookId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "purchase_requests", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as { book_id: string; status: Status };
+          if (row.book_id === bookId) setStatus((payload.new as any)?.status ?? null);
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, bookId]);
+
 
   if (loading) return null;
 
