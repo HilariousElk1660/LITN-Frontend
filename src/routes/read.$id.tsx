@@ -105,9 +105,16 @@ function ReaderInner() {
   }[theme];
 
   const content = sampleChapter;
-  const highlighted = query
-    ? content.replace(new RegExp(`(${query})`, "gi"), `<mark style="background:oklch(0.85 0.18 85);color:inherit">$1</mark>`)
-    : content;
+  const highlighted = (() => {
+    if (!query) return content;
+    try {
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`(${escaped})`, "gi");
+      return content.replace(re, `<mark style="background:oklch(0.85 0.18 85);color:inherit">$1</mark>`);
+    } catch {
+      return content;
+    }
+  })();
 
   return (
     <div className={`min-h-screen transition-colors ${bgClass}`}>
