@@ -56,7 +56,32 @@ function AdminDashboard() {
 
   useEffect(() => {
     load();
+    const channel = supabase
+      .channel("purchase_requests_admin")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "purchase_requests" },
+        (payload) => {
+          setRows((prev) => {
+            if (payload.eventType === "INSERT") {
+              return [payload.new as PR, ...prev.filter((r) => r.id !== (payload.new as PR).id)];
+            }
+            if (payload.eventType === "UPDATE") {
+              return prev.map((r) => (r.id === (payload.new as PR).id ? (payload.new as PR) : r));
+            }
+            if (payload.eventType === "DELETE") {
+              return prev.filter((r) => r.id !== (payload.old as PR).id);
+            }
+            return prev;
+          });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
+
 
   const updateStatus = async (id: string, status: PR["status"]) => {
     const { error } = await supabase
