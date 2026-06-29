@@ -1,9 +1,12 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getBook, sampleChapter } from "@/lib/books";
 import logo from "@/assets/litn-logo.asset.json";
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/read/$id")({
+  ssr: false,
   loader: ({ params }) => {
     const book = getBook(params.id);
     if (!book) throw notFound();
@@ -17,7 +20,76 @@ export const Route = createFileRoute("/read/$id")({
   component: Reader,
 });
 
+function AccessGate({ bookId, children }: { bookId: string; children: React.ReactNode }) {
+  const { user, isAdmin, loading } = useAuth();
+  const [state, setState] = useState<"checking" | "granted" | "denied">("checking");
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) return setState("denied");
+    if (isAdmin) return setState("granted");
+    const check = () =>
+      supabase
+        .from("purchase_requests")
+        .select("status")
+        .eq("user_id", user.id)
+        .eq("book_id", bookId)
+        .eq("status", "paid")
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => setState(data ? "granted" : "denied"));
+    check();
+    const channel = supabase
+      .channel(`pr_read_${user.id}_${bookId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "purchase_requests", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as { book_id: string };
+          if (row.book_id === bookId) check();
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, isAdmin, loading, bookId]);
+
+  if (loading || state === "checking") {
+    return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Checking access…</div>;
+  }
+  if (state === "denied") {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
+        <h1 className="font-display text-3xl">Access required</h1>
+        <p className="text-muted-foreground">
+          {user
+            ? "Your purchase request must be approved before you can read this book."
+            : "Sign in and request access to read this book."}
+        </p>
+        <Link
+          to="/book/$id"
+          params={{ id: bookId }}
+          className="rounded-full bg-gradient-teal px-5 py-3 text-sm font-medium text-primary-foreground"
+        >
+          Back to book
+        </Link>
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
 function Reader() {
+  const { book } = Route.useLoaderData();
+  return (
+    <AccessGate bookId={book.id}>
+      <ReaderInner />
+    </AccessGate>
+  );
+}
+
+function ReaderInner() {
   const { book } = Route.useLoaderData();
   const [chapter, setChapter] = useState(1);
   const [fontSize, setFontSize] = useState(18);
