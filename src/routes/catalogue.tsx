@@ -1,16 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { BookCard } from "@/components/book-card";
 import { books, genres } from "@/lib/books";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/catalogue")({
   validateSearch: (s: Record<string, unknown>) => ({ q: (s.q as string) ?? "" }),
   head: () => ({
     meta: [
-      { title: "Catalogue — LITN" },
-      { name: "description", content: "Browse every book on LITN. Filter by genre, status, and author." },
+      { title: "Library — LITN" },
+      { name: "description", content: "Browse the full LITN medical-training library — anatomy, pharmacology, emergency medicine, cardiology, surgery and internal medicine." },
     ],
   }),
   component: Catalogue,
