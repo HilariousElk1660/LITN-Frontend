@@ -67,14 +67,14 @@ function Catalogue() {
     <div className="min-h-screen">
       <SiteHeader />
       <div className="mx-auto max-w-7xl px-6 pt-12 pb-20">
-        <h1 className="font-display text-4xl md:text-5xl">The Catalogue</h1>
-        <p className="mt-2 text-muted-foreground">{results.length} books, and counting.</p>
+        <h1 className="font-display text-4xl md:text-5xl">The Library</h1>
+        <p className="mt-2 text-muted-foreground">{results.length} medical-training titles available.</p>
 
         <div className="mt-8 flex flex-col gap-3 rounded-2xl border border-border/60 bg-surface p-4 md:flex-row md:items-center">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search titles, authors…"
+            placeholder="Search titles or subjects…"
             className="flex-1 rounded-full border border-border bg-background/60 px-4 py-2 text-sm outline-none focus:border-primary"
           />
           <select value={genre} onChange={(e) => setGenre(e.target.value)} className="rounded-full border border-border bg-background/60 px-4 py-2 text-sm">
