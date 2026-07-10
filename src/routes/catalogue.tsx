@@ -1,16 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { BookCard } from "@/components/book-card";
 import { books, genres } from "@/lib/books";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/catalogue")({
   validateSearch: (s: Record<string, unknown>) => ({ q: (s.q as string) ?? "" }),
   head: () => ({
     meta: [
-      { title: "Catalogue — LITN" },
-      { name: "description", content: "Browse every book on LITN. Filter by genre, status, and author." },
+      { title: "Library — LITN" },
+      { name: "description", content: "Browse the full LITN medical-training library — anatomy, pharmacology, emergency medicine, cardiology, surgery and internal medicine." },
     ],
   }),
   component: Catalogue,
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/catalogue")({
 
 function Catalogue() {
   const { q: initialQ } = Route.useSearch();
+  const { user, loading } = useAuth();
   const [q, setQ] = useState(initialQ);
   const [genre, setGenre] = useState("All");
   const [status, setStatus] = useState<"All" | "Serialised" | "Complete">("All");
@@ -28,7 +30,7 @@ function Catalogue() {
       .filter((b) =>
         (genre === "All" || b.genre === genre) &&
         (status === "All" || b.status === status) &&
-        (q === "" || `${b.title} ${b.author} ${b.genre}`.toLowerCase().includes(q.toLowerCase()))
+        (q === "" || `${b.title} ${b.genre}`.toLowerCase().includes(q.toLowerCase()))
       )
       .sort((a, b) => {
         if (sort === "rating") return b.rating - a.rating;
@@ -37,18 +39,42 @@ function Catalogue() {
       });
   }, [q, genre, status, sort]);
 
+  if (!loading && !user) {
+    return (
+      <div className="min-h-screen">
+        <SiteHeader />
+        <div className="mx-auto max-w-xl px-6 py-32 text-center">
+          <h1 className="font-display text-4xl">Sign in to view the library</h1>
+          <p className="mt-3 text-muted-foreground">
+            The full LITN medical-training library is available to signed-in members. Create a free account or sign in to browse every title.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link to="/login" className="rounded-full bg-gradient-teal px-6 py-3 text-sm font-medium text-primary-foreground shadow-glow">
+              Sign in
+            </Link>
+            <Link to="/signup" className="rounded-full border border-border bg-surface px-6 py-3 text-sm font-medium text-foreground">
+              Create account
+            </Link>
+          </div>
+        </div>
+        <SiteFooter />
+      </div>
+    );
+  }
+
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
       <div className="mx-auto max-w-7xl px-6 pt-12 pb-20">
-        <h1 className="font-display text-4xl md:text-5xl">The Catalogue</h1>
-        <p className="mt-2 text-muted-foreground">{results.length} books, and counting.</p>
+        <h1 className="font-display text-4xl md:text-5xl">The Library</h1>
+        <p className="mt-2 text-muted-foreground">{results.length} medical-training titles available.</p>
 
         <div className="mt-8 flex flex-col gap-3 rounded-2xl border border-border/60 bg-surface p-4 md:flex-row md:items-center">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search titles, authors…"
+            placeholder="Search titles or subjects…"
             className="flex-1 rounded-full border border-border bg-background/60 px-4 py-2 text-sm outline-none focus:border-primary"
           />
           <select value={genre} onChange={(e) => setGenre(e.target.value)} className="rounded-full border border-border bg-background/60 px-4 py-2 text-sm">

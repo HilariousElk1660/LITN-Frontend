@@ -15,99 +15,127 @@ export type Book = {
   status: "Serialised" | "Complete";
   chapters: number;
   rating: number;
+  price: number;
+  currency: string;
   synopsis: string;
+};
+
+// Payment details shown to buyers during checkout.
+export const PAYMENT_INFO = {
+  provider: "MTN Mobile Money",
+  number: "+260 97 123 4567",
+  accountName: "LITN Medical Training",
+  reviewWindow: "within 24 hours",
 };
 
 export const books: Book[] = [
   {
-    id: "tideglass",
-    title: "Tideglass",
-    author: "Mira Okafor",
-    authorId: "mira-okafor",
+    id: "clinical-anatomy-essentials",
+    title: "Clinical Anatomy Essentials",
+    author: "Dr. M. Okafor",
+    authorId: "m-okafor",
     cover: cover1,
-    genre: "Literary Fiction",
-    status: "Serialised",
-    chapters: 14,
-    rating: 4.7,
-    synopsis:
-      "On an island where the sea remembers more than the people who left it, a lighthouse keeper begins receiving letters from a daughter she never had.",
-  },
-  {
-    id: "the-hollow-orange",
-    title: "The Hollow Orange",
-    author: "Daniel Reyes",
-    authorId: "daniel-reyes",
-    cover: cover2,
-    genre: "Contemporary",
-    status: "Complete",
-    chapters: 22,
-    rating: 4.4,
-    synopsis:
-      "A street vendor in Lisbon trades secrets for fruit, and slowly the entire neighbourhood begins to vanish into the stories he tells.",
-  },
-  {
-    id: "ember-rite",
-    title: "Ember Rite",
-    author: "Vera Solenne",
-    authorId: "vera-solenne",
-    cover: cover3,
-    genre: "Thriller",
-    status: "Serialised",
-    chapters: 9,
-    rating: 4.8,
-    synopsis:
-      "Every seven years the city chooses a witness. This time, the witness is the one who set the fire.",
-  },
-  {
-    id: "soft-orbit",
-    title: "Soft Orbit",
-    author: "Iris Ang",
-    authorId: "iris-ang",
-    cover: cover4,
-    genre: "Romance",
+    genre: "Anatomy",
     status: "Complete",
     chapters: 18,
-    rating: 4.5,
+    rating: 4.8,
+    price: 15,
+    currency: "USD",
     synopsis:
-      "Two astronomers, one telescope, and a six-month winter at the edge of the world.",
+      "A concise, exam-oriented walkthrough of clinical anatomy — regional dissection, surface landmarks, and high-yield correlations for medical students and interns.",
   },
   {
-    id: "field-notes",
-    title: "Field Notes for the Vanishing",
-    author: "Tomas Brandt",
-    authorId: "tomas-brandt",
+    id: "pharmacology-in-practice",
+    title: "Pharmacology in Practice",
+    author: "Dr. D. Reyes",
+    authorId: "d-reyes",
+    cover: cover2,
+    genre: "Pharmacology",
+    status: "Complete",
+    chapters: 22,
+    rating: 4.6,
+    price: 18,
+    currency: "USD",
+    synopsis:
+      "Mechanisms, indications, contraindications, and prescribing pearls across the major drug classes, with case-based dosing scenarios.",
+  },
+  {
+    id: "emergency-medicine-handbook",
+    title: "Emergency Medicine Handbook",
+    author: "Dr. V. Solenne",
+    authorId: "v-solenne",
+    cover: cover3,
+    genre: "Emergency Medicine",
+    status: "Serialised",
+    chapters: 14,
+    rating: 4.9,
+    price: 20,
+    currency: "USD",
+    synopsis:
+      "Structured, protocol-driven guidance for the first ten minutes of a resuscitation — airway, shock, trauma, toxicology and paediatric emergencies.",
+  },
+  {
+    id: "clinical-ecg-mastery",
+    title: "Clinical ECG Mastery",
+    author: "Dr. I. Ang",
+    authorId: "i-ang",
+    cover: cover4,
+    genre: "Cardiology",
+    status: "Complete",
+    chapters: 16,
+    rating: 4.7,
+    price: 16,
+    currency: "USD",
+    synopsis:
+      "From axis and intervals to ischaemia, arrhythmia and pacing artefacts — read any ECG systematically, with 120 annotated tracings.",
+  },
+  {
+    id: "surgical-skills-primer",
+    title: "Surgical Skills Primer",
+    author: "Dr. T. Brandt",
+    authorId: "t-brandt",
     cover: cover5,
-    genre: "Memoir",
+    genre: "Surgery",
     status: "Complete",
     chapters: 12,
-    rating: 4.6,
+    rating: 4.5,
+    price: 17,
+    currency: "USD",
     synopsis:
-      "A botanist returns to the forest of his childhood to catalogue what is left, and finds himself among the entries.",
+      "Suturing, knot-tying, scrubbing, and the ward-round etiquette every junior surgeon needs before their first theatre list.",
   },
   {
-    id: "constellation-9",
-    title: "Constellation 9",
-    author: "Adaeze Park",
-    authorId: "adaeze-park",
+    id: "internal-medicine-review",
+    title: "Internal Medicine Review",
+    author: "Dr. A. Park",
+    authorId: "a-park",
     cover: cover6,
-    genre: "Sci-Fi",
+    genre: "Internal Medicine",
     status: "Serialised",
-    chapters: 6,
-    rating: 4.9,
+    chapters: 24,
+    rating: 4.8,
+    price: 22,
+    currency: "USD",
     synopsis:
-      "The ninth probe sent into the dark has come back. Only the navigator remembers what it found there.",
+      "A board-review companion covering cardiology, pulmonology, nephrology, endocrinology, and infectious disease with rapid-recall summaries.",
   },
 ];
 
 export const getBook = (id: string) => books.find((b) => b.id === id);
-export const genres = ["All", "Literary Fiction", "Contemporary", "Thriller", "Romance", "Memoir", "Sci-Fi"];
+export const genres = [
+  "All",
+  "Anatomy",
+  "Pharmacology",
+  "Emergency Medicine",
+  "Cardiology",
+  "Surgery",
+  "Internal Medicine",
+];
 
-export const sampleChapter = `The lamp had not been lit in seventeen years, and still the gulls came at dusk and circled it as though they remembered.
+export const sampleChapter = `Clinical reasoning begins with the story the patient tells, and the story you tell yourself about what could kill them first.
 
-I climbed the iron steps slowly, the way my mother taught me to climb anything that mattered: as if the building might be listening. The keeper's room at the top was exactly as she had described it, down to the bone-coloured cup on the windowsill and the small brass key tied to the door handle with red thread.
+Before you touch a stethoscope, ask three questions: what brought them in today, what has changed since it started, and what would happen if we did nothing. The answers frame every investigation that follows.
 
-There was a letter on the desk. The handwriting was mine.
+The novice orders a panel. The clinician orders a test. The difference is a hypothesis — a specific claim about what is happening in this body, at this moment, that a single result can confirm or refute.
 
-"Dear mother," it began, "the tide came again last night and brought back the boy we never had. He is sleeping in the kitchen. Please do not wake him."
-
-I sat down on the floor and listened to the sea forget itself against the rocks. Somewhere below, a kettle began to whistle, although there was no one in the lighthouse but me, and the lamp, and seventeen years of weather waiting to be let back in.`;
+Anchor your differential in anatomy and physiology, not in the last case you remember. Memory is a lazy diagnostician; the body is not. When the picture does not fit, do not force it — go back to the history and listen again.`;

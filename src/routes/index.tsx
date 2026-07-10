@@ -1,26 +1,29 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { BookCard } from "@/components/book-card";
-import { books, sampleChapter } from "@/lib/books";
-import heroImg from "@/assets/hero-reader.jpg";
+import { BookOpen, ShieldCheck, Stethoscope } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "LITN — A quieter place to read." },
-      { name: "description", content: "A community-first reading platform with serialised chapters and a beautiful, focused reader." },
-      { property: "og:title", content: "LITN — A quieter place to read." },
-      { property: "og:description", content: "Serialised chapters and a beautiful, focused reader." },
+      { title: "LITN — Medical training, made readable." },
+      {
+        name: "description",
+        content:
+          "LITN is a focused medical-training library: exam-oriented anatomy, pharmacology, emergency medicine and clinical review — sign in to browse the full catalogue.",
+      },
+      { property: "og:title", content: "LITN — Medical training, made readable." },
+      {
+        property: "og:description",
+        content:
+          "A focused medical-training library. Sign in to browse anatomy, pharmacology, emergency medicine and clinical review titles.",
+      },
     ],
   }),
   component: Index,
 });
 
 function Index() {
-  const featured = books.slice(0, 6);
-  const trending = books.slice(6, 12);
-
   return (
     <div className="min-h-screen">
       <SiteHeader />
@@ -28,136 +31,77 @@ function Index() {
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 -z-10">
-          <img src={heroImg} alt="" className="h-full w-full object-cover opacity-30" width={1536} height={1024} />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
-          <div className="absolute -top-32 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-teal/20 blur-[140px]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-background" />
+          <div className="absolute -top-40 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-teal/15 blur-[140px]" />
         </div>
-        <div className="mx-auto max-w-7xl px-6 pt-28 pb-36 md:pt-36 md:pb-44">
-          <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-teal/30 bg-teal/10 px-3 py-1 text-xs uppercase tracking-widest text-teal-bright">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-bright" /> Now in Alpha
-            </span>
-            <h1 className="mt-6 font-display text-5xl leading-[1.02] md:text-7xl">
-              A quieter place{" "}
-              <span className="text-gradient-teal">to read.</span>
-            </h1>
-            <p className="mt-6 max-w-xl text-lg text-muted-foreground">
-              Serialised chapters, complete novels, and a reader built for one long, beautiful scroll.
-              Discover your next favourite story on LITN.
-            </p>
+        <div className="mx-auto max-w-4xl px-6 pt-32 pb-24 text-center md:pt-40 md:pb-32">
+          <span className="inline-flex items-center gap-2 rounded-full border border-teal/30 bg-teal/10 px-3 py-1 text-xs uppercase tracking-widest text-teal-bright">
+            <Stethoscope className="h-3.5 w-3.5" /> Medical training library
+          </span>
+          <h1 className="mt-6 font-display text-5xl leading-[1.05] md:text-7xl">
+            Clinical books,{" "}
+            <span className="text-gradient-teal">built for study.</span>
+          </h1>
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
+            LITN is a curated library of medical-training titles — anatomy, pharmacology,
+            emergency medicine, cardiology and clinical review — written for students,
+            interns and early-career clinicians.
+          </p>
 
-            <form
-              action="/catalogue"
-              className="mt-10 flex max-w-xl items-center gap-2 rounded-full border border-border bg-surface/80 p-2 shadow-card backdrop-blur"
+          <div className="mt-10 flex flex-wrap justify-center gap-3">
+            <Link
+              to="/signup"
+              className="rounded-full bg-gradient-teal px-6 py-3 text-sm font-medium text-primary-foreground shadow-glow transition hover:opacity-90"
             >
-              <input
-                name="q"
-                placeholder="Search titles, authors, genres…"
-                className="w-full bg-transparent px-4 py-2 text-sm outline-none placeholder:text-muted-foreground"
-              />
-              <button className="rounded-full bg-gradient-teal px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-glow transition hover:opacity-90">
-                Search
-              </button>
-            </form>
-
-            <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm">
-              <Link to="/catalogue" className="text-foreground underline-offset-4 hover:underline">
-                Browse the catalogue →
-              </Link>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <span className="font-display text-foreground">{books.length}+</span> titles
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <span className="font-display text-foreground">Weekly</span> chapter drops
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured books */}
-      <section className="mx-auto max-w-7xl px-6">
-        <div className="flex items-end justify-between">
-          <div>
-            <span className="text-xs uppercase tracking-widest text-teal-bright">Editors' picks</span>
-            <h2 className="mt-2 font-display text-3xl md:text-4xl">Featured this week</h2>
-          </div>
-          <Link to="/catalogue" className="text-sm text-teal-bright hover:underline">See all →</Link>
-        </div>
-        <div className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
-          {featured.map((b) => <BookCard key={b.id} book={b} />)}
-        </div>
-      </section>
-
-      {/* Reading view preview */}
-      <section className="mx-auto mt-32 max-w-7xl px-6">
-        <div className="grid gap-12 md:grid-cols-[1fr_1.2fr] md:items-center">
-          <div>
-            <span className="text-xs uppercase tracking-widest text-teal-bright">The reader</span>
-            <h2 className="mt-3 font-display text-3xl md:text-5xl">Built for one long, beautiful scroll.</h2>
-            <p className="mt-5 text-muted-foreground">
-              No page-flipping, no friction. Bookmark, search a phrase, change the font —
-              your place is saved across every device.
-            </p>
-            <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
-              <li className="flex gap-3"><span className="text-teal-bright">·</span> Continuous single-scroll, optimised for mobile</li>
-              <li className="flex gap-3"><span className="text-teal-bright">·</span> In-book search and chapter TOC</li>
-              <li className="flex gap-3"><span className="text-teal-bright">·</span> Bookmark and resume anywhere</li>
-              <li className="flex gap-3"><span className="text-teal-bright">·</span> Paper, Sepia, and Night reading themes</li>
-            </ul>
-          </div>
-          <div className="rounded-2xl border border-border/60 bg-[oklch(0.96_0.01_90)] p-8 text-[oklch(0.2_0.02_60)] shadow-card md:p-12">
-            <div className="text-xs uppercase tracking-widest opacity-60">Chapter 1 — The Lamp</div>
-            <h3 className="mt-2 font-display text-2xl md:text-3xl">Tideglass</h3>
-            <div className="mt-6 max-h-72 overflow-hidden font-display text-[15px] leading-7 [mask-image:linear-gradient(to_bottom,black_60%,transparent)]">
-              {sampleChapter.split("\n\n").map((p, i) => <p key={i} className="mb-4">{p}</p>)}
-            </div>
-            <Link to="/read/$id" params={{ id: "tideglass" }} className="mt-4 inline-flex text-sm font-medium text-[oklch(0.45_0.12_200)] hover:underline">
-              Continue reading →
+              Create an account
+            </Link>
+            <Link
+              to="/login"
+              className="rounded-full border border-border bg-surface px-6 py-3 text-sm font-medium text-foreground transition hover:bg-surface/70"
+            >
+              Sign in to browse
             </Link>
           </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Sign in to view the full catalogue and place an order.
+          </p>
         </div>
       </section>
 
-      {/* Trending */}
-      {trending.length > 0 && (
-        <section className="mx-auto mt-32 max-w-7xl px-6">
-          <div className="flex items-end justify-between">
-            <div>
-              <span className="text-xs uppercase tracking-widest text-teal-bright">Trending</span>
-              <h2 className="mt-2 font-display text-3xl md:text-4xl">What readers are loving</h2>
-            </div>
-            <Link to="/catalogue" className="text-sm text-teal-bright hover:underline">Browse all →</Link>
-          </div>
-          <div className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
-            {trending.map((b) => <BookCard key={b.id} book={b} />)}
-          </div>
-        </section>
-      )}
-
-      {/* CTA */}
-      <section className="mx-auto mt-32 max-w-7xl px-6">
-        <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-surface p-10 text-center md:p-20">
-          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-teal/30 blur-3xl" />
-          <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-gold/20 blur-3xl" />
-          <div className="relative mx-auto max-w-2xl">
-            <h2 className="font-display text-3xl md:text-5xl">Start reading tonight.</h2>
-            <p className="mt-4 text-muted-foreground">
-              Free to join. Request access to any title and dive in.
-            </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <Link to="/catalogue" className="rounded-full bg-gradient-teal px-6 py-3 text-sm font-medium text-primary-foreground shadow-glow transition hover:opacity-90">
-                Browse catalogue
-              </Link>
-              <Link to="/signup" className="rounded-full border border-border bg-background/40 px-6 py-3 text-sm font-medium text-foreground transition hover:bg-background/70">
-                Create an account
-              </Link>
-            </div>
-          </div>
+      {/* What is LITN */}
+      <section className="mx-auto max-w-5xl px-6 pb-24">
+        <div className="grid gap-6 md:grid-cols-3">
+          <Feature
+            icon={<BookOpen className="h-5 w-5" />}
+            title="Focused, exam-ready"
+            body="Every title is written around learning objectives — high-yield summaries, case correlations, and rapid-recall notes."
+          />
+          <Feature
+            icon={<Stethoscope className="h-5 w-5" />}
+            title="Clinically grounded"
+            body="Authored and reviewed by practising clinicians so the material reflects real bedside decisions, not just textbook ideals."
+          />
+          <Feature
+            icon={<ShieldCheck className="h-5 w-5" />}
+            title="Simple, transparent ordering"
+            body="Order a book, pay via mobile money, and get access as soon as your payment is confirmed. No subscriptions, no surprises."
+          />
         </div>
       </section>
 
       <SiteFooter />
+    </div>
+  );
+}
+
+function Feature({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-surface p-6">
+      <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-teal/15 text-teal-bright">
+        {icon}
+      </div>
+      <h3 className="mt-4 font-display text-lg">{title}</h3>
+      <p className="mt-2 text-sm text-muted-foreground">{body}</p>
     </div>
   );
 }

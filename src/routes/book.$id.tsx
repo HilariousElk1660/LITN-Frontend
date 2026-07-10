@@ -57,15 +57,18 @@ function BookPage() {
             >
               Start reading
             </Link>
-            <PurchaseRequestButton bookId={book.id} bookTitle={book.title} />
+            <PurchaseRequestButton
+              bookId={book.id}
+              bookTitle={book.title}
+              price={book.price}
+              currency={book.currency}
+            />
           </div>
           <div>
             <div className="text-xs uppercase tracking-widest text-teal-bright">{book.genre} · {book.status}</div>
             <h1 className="mt-2 font-display text-5xl">{book.title}</h1>
-            <Link to="/author/$id" params={{ id: book.authorId }} className="mt-2 inline-block text-lg text-muted-foreground hover:text-foreground">
-              by {book.author}
-            </Link>
-            <div className="mt-4 flex gap-6 text-sm text-muted-foreground">
+            <div className="mt-4 flex flex-wrap gap-6 text-sm text-muted-foreground">
+              <span className="font-display text-foreground">{book.currency} {book.price}</span>
               <span>★ {book.rating}</span>
               <span>{book.chapters} chapters</span>
               <span>{book.status === "Serialised" ? "New chapter weekly" : "Complete"}</span>
