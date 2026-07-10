@@ -19,6 +19,7 @@ export const Route = createFileRoute("/catalogue")({
 
 function Catalogue() {
   const { q: initialQ } = Route.useSearch();
+  const { user, loading } = useAuth();
   const [q, setQ] = useState(initialQ);
   const [genre, setGenre] = useState("All");
   const [status, setStatus] = useState<"All" | "Serialised" | "Complete">("All");
@@ -29,7 +30,7 @@ function Catalogue() {
       .filter((b) =>
         (genre === "All" || b.genre === genre) &&
         (status === "All" || b.status === status) &&
-        (q === "" || `${b.title} ${b.author} ${b.genre}`.toLowerCase().includes(q.toLowerCase()))
+        (q === "" || `${b.title} ${b.genre}`.toLowerCase().includes(q.toLowerCase()))
       )
       .sort((a, b) => {
         if (sort === "rating") return b.rating - a.rating;
@@ -37,6 +38,30 @@ function Catalogue() {
         return a.title.localeCompare(b.title);
       });
   }, [q, genre, status, sort]);
+
+  if (!loading && !user) {
+    return (
+      <div className="min-h-screen">
+        <SiteHeader />
+        <div className="mx-auto max-w-xl px-6 py-32 text-center">
+          <h1 className="font-display text-4xl">Sign in to view the library</h1>
+          <p className="mt-3 text-muted-foreground">
+            The full LITN medical-training library is available to signed-in members. Create a free account or sign in to browse every title.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link to="/login" className="rounded-full bg-gradient-teal px-6 py-3 text-sm font-medium text-primary-foreground shadow-glow">
+              Sign in
+            </Link>
+            <Link to="/signup" className="rounded-full border border-border bg-surface px-6 py-3 text-sm font-medium text-foreground">
+              Create account
+            </Link>
+          </div>
+        </div>
+        <SiteFooter />
+      </div>
+    );
+  }
+
 
   return (
     <div className="min-h-screen">
