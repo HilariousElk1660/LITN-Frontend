@@ -10,7 +10,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         <Link to="/" className="flex items-center gap-3">
-          <img src={logo.url} alt="LITN" className="h-9 w-9 rounded-md object-contain" />
+          <img src={logo.url} alt="" className="h-9 w-9 rounded-md object-contain" />
           <div className="flex items-baseline gap-2">
             <span className="font-display text-xl tracking-tight">LITN</span>
             <span className="rounded-full bg-teal/20 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-teal-bright">
