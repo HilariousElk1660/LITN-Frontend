@@ -4,7 +4,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { BookCard } from "@/components/book-card";
 import { books } from "@/lib/books";
 
-export const Route = createFileRoute("/author/$id")({
+export const Route = createFileRoute("/author")({
   loader: ({ params }) => {
     const author = books.find((b) => b.authorId === params.id);
     if (!author) throw notFound();

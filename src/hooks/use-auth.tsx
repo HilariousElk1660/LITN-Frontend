@@ -8,6 +8,7 @@ type AuthCtx = {
   isAdmin: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
+  backendUrl: string;
 };
 
 const Ctx = createContext<AuthCtx>({
@@ -16,12 +17,14 @@ const Ctx = createContext<AuthCtx>({
   isAdmin: false,
   loading: true,
   signOut: async () => {},
+  backendUrl: "",
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -55,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <Ctx.Provider value={{ session, user: session?.user ?? null, isAdmin, loading, signOut }}>
+    <Ctx.Provider value={{ session, user: session?.user ?? null, isAdmin, loading, signOut, backendUrl }}>
       {children}
     </Ctx.Provider>
   );

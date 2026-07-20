@@ -4,6 +4,7 @@ import cover3 from "@/assets/cover-3.jpg";
 import cover4 from "@/assets/cover-4.jpg";
 import cover5 from "@/assets/cover-5.jpg";
 import cover6 from "@/assets/cover-6.jpg";
+import { useAuth } from "@/hooks/use-auth";
 
 export type Book = {
   id: string;
