@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { BookCard } from "@/components/book-card";
-import { books, genres } from "@/lib/books";
+import { genres, type Book } from "@/lib/books";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/catalogue")({
@@ -19,11 +19,54 @@ export const Route = createFileRoute("/catalogue")({
 
 function Catalogue() {
   const { q: initialQ } = Route.useSearch();
-  const { user, loading } = useAuth();
+  const { user, loading, backendUrl } = useAuth();
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loadingBooks, setLoadingBooks] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState(initialQ);
   const [genre, setGenre] = useState("All");
   const [status, setStatus] = useState<"All" | "Serialised" | "Complete">("All");
   const [sort, setSort] = useState<"rating" | "chapters" | "title">("rating");
+
+  useEffect(() => {
+    const fetchBooks = async () => {
+      setLoadingBooks(true);
+      setError(null);
+
+      try {
+        const base = backendUrl || "http://localhost:8000";
+        const res = await fetch(`${base}/all_books`);
+        if (!res.ok) {
+          throw new Error(`Failed to load books: ${res.status} ${res.statusText}`);
+        }
+
+        const data = await res.json();
+        const mappedBooks: Book[] = (data ?? []).map((item: any) => ({
+          id: item.book_id,
+          title: item.book_name,
+          author: item.author_name ?? "Unknown author",
+          authorId: item.author_id ?? item.author_name?.toLowerCase().replace(/\s+/g, "-") ?? "unknown",
+          cover: item.book_cover_url ?? "",
+          genre: item.category ?? "Unknown",
+          status: item.status === "Complete" ? "Complete" : "Serialised",
+          chapters: item.chapters ?? item.pages ?? 0,
+          rating: item.rating ?? 0,
+          price: item.subscription_price ?? 0,
+          currency: item.currency ?? "USD",
+          synopsis: item.synopsis ?? item.description ?? "",
+        }));
+
+        setBooks(mappedBooks);
+      } catch (err) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : "Unable to load catalogue.");
+      } finally {
+        setLoadingBooks(false);
+      }
+    };
+
+    fetchBooks();
+  }, [backendUrl]);
 
   const results = useMemo(() => {
     return books
@@ -37,7 +80,7 @@ function Catalogue() {
         if (sort === "chapters") return b.chapters - a.chapters;
         return a.title.localeCompare(b.title);
       });
-  }, [q, genre, status, sort]);
+  }, [books, q, genre, status, sort]);
 
   if (!loading && !user) {
     return (
@@ -90,7 +133,14 @@ function Catalogue() {
           </select>
         </div>
 
-        {results.length === 0 ? (
+        {loadingBooks ? (
+          <p className="mt-16 text-center text-muted-foreground">Loading catalogue…</p>
+        ) : error ? (
+          <div className="mt-16 rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-900">
+            <p>Unable to load books.</p>
+            <p className="mt-2">{error}</p>
+          </div>
+        ) : results.length === 0 ? (
           <p className="mt-16 text-center text-muted-foreground">No books match those filters yet.</p>
         ) : (
           <div className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
