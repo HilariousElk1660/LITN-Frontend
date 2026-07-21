@@ -1,10 +1,17 @@
 import { Link } from "@tanstack/react-router";
 import logo from "@/assets/litn-logo.asset.json";
 import { useAuth } from "@/hooks/use-auth";
-import { Shield } from "lucide-react";
+import { Shield, Crown } from "lucide-react";
 
 export function SiteHeader() {
-  const { user, isAdmin, signOut, loading } = useAuth();
+  const { user, isAdmin, isSuperAdmin, signOut, loading } = useAuth();
+
+  const initials = (user?.fullname || user?.email || "?")
+    .split(" ")
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl">
@@ -18,6 +25,7 @@ export function SiteHeader() {
             </span>
           </div>
         </Link>
+
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
           <Link to="/" className="transition-colors hover:text-foreground" activeOptions={{ exact: true }} activeProps={{ className: "text-foreground" }}>
             Home
@@ -31,17 +39,31 @@ export function SiteHeader() {
             </Link>
           )}
         </nav>
+
         <div className="flex items-center gap-2">
           {loading ? null : user ? (
             <>
-              {isAdmin && (
+              {isSuperAdmin ? (
                 <span className="hidden items-center gap-1 rounded-full border border-teal-bright/40 bg-teal/10 px-3 py-1 text-[10px] font-medium uppercase tracking-widest text-teal-bright sm:inline-flex">
-                  <Shield className="h-3 w-3" /> Super Admin
+                  <Crown className="h-3 w-3" /> Super Admin
                 </span>
-              )}
-              <span className="hidden text-sm text-muted-foreground sm:inline">
-                {user.email}
-              </span>
+              ) : isAdmin ? (
+                <span className="hidden items-center gap-1 rounded-full border border-teal-bright/40 bg-teal/10 px-3 py-1 text-[10px] font-medium uppercase tracking-widest text-teal-bright sm:inline-flex">
+                  <Shield className="h-3 w-3" /> Admin
+                </span>
+              ) : null}
+
+              <Link
+                to="/profile"
+                className="flex items-center gap-2 rounded-full border border-transparent px-2 py-1 text-sm text-muted-foreground transition hover:border-border hover:text-foreground"
+                activeProps={{ className: "border-border text-foreground" }}
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-teal text-[11px] font-semibold text-primary-foreground">
+                  {initials}
+                </span>
+                <span className="hidden sm:inline">{user.email}</span>
+              </Link>
+
               <button
                 onClick={() => signOut()}
                 className="rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition hover:text-foreground"

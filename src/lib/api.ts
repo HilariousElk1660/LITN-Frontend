@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 export interface AuthResponse {
   user_id: string;
@@ -9,17 +9,44 @@ export interface AuthResponse {
   token_type: string;
 }
 
-export const api = {
-  async post<T>(path: string, body: unknown): Promise<T> {
-    const res = await fetch(`${BASE_URL}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem("access_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail ?? "Request failed");
-    return data as T;
+async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch {
+    // no/invalid JSON body (e.g. 204 No Content)
+  }
+
+  if (!res.ok) throw new Error(data?.detail ?? `Request failed (${res.status})`);
+  return data as T;
+}
+
+export const api = {
+  get<T>(path: string) {
+    return request<T>("GET", path);
+  },
+  post<T>(path: string, body: unknown) {
+    return request<T>("POST", path, body);
+  },
+  patch<T>(path: string, body: unknown) {
+    return request<T>("PATCH", path, body);
+  },
+  delete<T>(path: string) {
+    return request<T>("DELETE", path);
   },
 
   saveSession(auth: AuthResponse) {

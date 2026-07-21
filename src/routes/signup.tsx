@@ -27,7 +27,7 @@ function Signup() {
       });
       api.saveSession(auth);
       toast.success("Account created. Welcome to LITN.");
-      navigate({ to: "/" });
+      navigate({ to: "/login" });
     } catch (err: any) {
       toast.error(err.message);
     } finally {

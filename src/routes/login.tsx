@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { SiteHeader } from "@/components/site-header";
 import { api, type AuthResponse } from "@/lib/api";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — LITN" }] }),
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/login")({
 
 function Login() {
   const navigate = useNavigate();
+  const { refresh } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,6 +23,7 @@ function Login() {
     try {
       const auth = await api.post<AuthResponse>("/auth/sign_in", { email, password });
       api.saveSession(auth);
+      refresh();
       toast.success("Welcome back.");
       navigate({ to: "/" });
     } catch (err: any) {
@@ -43,6 +46,7 @@ function Login() {
             type="email"
             placeholder="Email"
             required
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-full border border-border bg-surface px-5 py-3 text-sm outline-none focus:border-primary"
@@ -51,6 +55,7 @@ function Login() {
             type="password"
             placeholder="Password"
             required
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-full border border-border bg-surface px-5 py-3 text-sm outline-none focus:border-primary"
