@@ -7,8 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/read/$id")({
   ssr: false,
-  loader: ({ params }) => {
-    const book = getBook(params.id);
+  loader: async ({ params }) => {
+    const book = await getBook(params.id);
     if (!book) throw notFound();
     return { book };
   },

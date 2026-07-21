@@ -5,8 +5,8 @@ import { PurchaseRequestButton } from "@/components/purchase-request-button";
 import { getBook } from "@/lib/books";
 
 export const Route = createFileRoute("/book/$id")({
-  loader: ({ params }) => {
-    const book = getBook(params.id);
+  loader: async ({ params }) => {
+    const book = await getBook(params.id);
     if (!book) throw notFound();
     return { book };
   },

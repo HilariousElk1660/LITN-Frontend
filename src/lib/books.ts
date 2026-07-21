@@ -121,7 +121,63 @@ export const books: Book[] = [
   },
 ];
 
-export const getBook = (id: string) => books.find((b) => b.id === id);
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
+type BackendBook = Record<string, unknown>;
+
+const normalizeBook = (raw: BackendBook | null | undefined) => {
+  if (!raw) return null;
+
+  const id = String(raw.book_id ?? raw.id ?? raw.bookId ?? raw.uuid ?? "");
+  if (!id) return null;
+
+  const title = String(raw.title ?? raw.book_title ?? raw.name ?? "Untitled");
+  const author = String(raw.author ?? raw.author_name ?? raw.book_author ?? raw.writer ?? "Unknown author");
+  const authorId = String(raw.author_id ?? raw.authorId ?? raw.author_id ?? author.toLowerCase().replace(/\s+/g, "-"));
+  const cover = String(raw.cover ?? raw.cover_url ?? raw.image_url ?? raw.cover_image ?? "");
+  const genre = String(raw.genre ?? raw.category ?? raw.book_genre ?? "General");
+  const status = (raw.status ?? raw.book_status ?? "Complete") as Book["status"];
+  const chapters = Number(raw.chapters ?? raw.chapter_count ?? raw.total_chapters ?? 1);
+  const rating = Number(raw.rating ?? raw.book_rating ?? 0);
+  const price = Number(raw.price ?? raw.book_price ?? 0);
+  const currency = String(raw.currency ?? "USD");
+  const synopsis = String(raw.synopsis ?? raw.description ?? raw.summary ?? "");
+
+  return {
+    id,
+    title,
+    author,
+    authorId,
+    cover,
+    genre,
+    status: status === "Serialised" ? "Serialised" : "Complete",
+    chapters: Number.isFinite(chapters) ? chapters : 1,
+    rating: Number.isFinite(rating) ? rating : 0,
+    price: Number.isFinite(price) ? price : 0,
+    currency,
+    synopsis,
+  } satisfies Book;
+};
+
+export const getBook = async (id: string): Promise<Book | null> => {
+  try {
+    const res = await fetch(`${API_BASE_URL}/book/${encodeURIComponent(id)}`);
+
+    if (!res.ok) {
+      throw new Error(`Backend returned ${res.status}`);
+    }
+
+    const payload = await res.json();
+    const mapped = normalizeBook(payload);
+
+    if (mapped) return mapped;
+  } catch (err) {
+    console.error("Failed to load book from backend:", err);
+  }
+
+  return books.find((b) => b.id === id) ?? null;
+};
+
 export const genres = [
   "All",
   "Anatomy",
