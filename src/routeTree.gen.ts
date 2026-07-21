@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CatalogueRouteImport } from './routes/catalogue'
 import { Route as AuthorRouteImport } from './routes/author'
@@ -21,6 +22,11 @@ import { Route as BookIdRouteImport } from './routes/book.$id'
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/author': typeof AuthorRoute
   '/catalogue': typeof CatalogueRoute
   '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/book/$id': typeof BookIdRoute
   '/read/$id': typeof ReadIdRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/author': typeof AuthorRoute
   '/catalogue': typeof CatalogueRoute
   '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/book/$id': typeof BookIdRoute
   '/read/$id': typeof ReadIdRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/author': typeof AuthorRoute
   '/catalogue': typeof CatalogueRoute
   '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/book/$id': typeof BookIdRoute
   '/read/$id': typeof ReadIdRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/author'
     | '/catalogue'
     | '/login'
+    | '/profile'
     | '/signup'
     | '/book/$id'
     | '/read/$id'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/author'
     | '/catalogue'
     | '/login'
+    | '/profile'
     | '/signup'
     | '/book/$id'
     | '/read/$id'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/author'
     | '/catalogue'
     | '/login'
+    | '/profile'
     | '/signup'
     | '/book/$id'
     | '/read/$id'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   AuthorRoute: typeof AuthorRoute
   CatalogueRoute: typeof CatalogueRoute
   LoginRoute: typeof LoginRoute
+  ProfileRoute: typeof ProfileRoute
   SignupRoute: typeof SignupRoute
   BookIdRoute: typeof BookIdRoute
   ReadIdRoute: typeof ReadIdRoute
@@ -141,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthorRoute: AuthorRoute,
   CatalogueRoute: CatalogueRoute,
   LoginRoute: LoginRoute,
+  ProfileRoute: ProfileRoute,
   SignupRoute: SignupRoute,
   BookIdRoute: BookIdRoute,
   ReadIdRoute: ReadIdRoute,

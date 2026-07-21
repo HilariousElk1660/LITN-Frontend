@@ -1,64 +1,66 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
+
+type Role = "reader" | "admin" | "super-admin";
+
+type StoredUser = {
+  user_id: string;
+  email: string;
+  fullname: string;
+  role: Role;
+};
 
 type AuthCtx = {
-  session: Session | null;
-  user: User | null;
-  isAdmin: boolean;
+  user: StoredUser | null;
+  role: Role | null;
+  isAdmin: boolean;       // true for 'admin' OR 'super-admin'
+  isSuperAdmin: boolean;  // true only for 'super-admin'
   loading: boolean;
-  signOut: () => Promise<void>;
-  backendUrl: string;
+  signOut: () => void;
+  refresh: () => void;
 };
 
 const Ctx = createContext<AuthCtx>({
-  session: null,
   user: null,
+  role: null,
   isAdmin: false,
+  isSuperAdmin: false,
   loading: true,
-  signOut: async () => {},
-  backendUrl: "",
+  signOut: () => {},
+  refresh: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState<StoredUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-      if (s?.user) {
-        // defer to avoid deadlocks
-        setTimeout(() => {
-          supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", s.user.id)
-            .eq("role", "admin")
-            .maybeSingle()
-            .then(({ data }) => setIsAdmin(!!data));
-        }, 0);
-      } else {
-        setIsAdmin(false);
-      }
-    });
-
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
-
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  const refresh = () => {
+    setUser(api.getUser());
   };
 
+  useEffect(() => {
+    refresh();
+    setLoading(false);
+
+    // keep in sync if another tab signs in/out
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "access_token" || e.key === "user") refresh();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  const signOut = () => {
+    api.clearSession();
+    setUser(null);
+  };
+
+  const role = user?.role ?? null;
+  const isSuperAdmin = role === "super-admin";
+  const isAdmin = role === "admin" || isSuperAdmin;
+
   return (
-    <Ctx.Provider value={{ session, user: session?.user ?? null, isAdmin, loading, signOut, backendUrl }}>
+    <Ctx.Provider value={{ user, role, isAdmin, isSuperAdmin, loading, signOut, refresh }}>
       {children}
     </Ctx.Provider>
   );
