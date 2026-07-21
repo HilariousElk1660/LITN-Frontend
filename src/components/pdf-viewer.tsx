@@ -21,7 +21,7 @@ export default function PdfViewer({initialPage = 5,file,book_id}) {
     setNumPages(numPages);
     pageRefs.current = Array(numPages).fill(null);
   }
-
+  console.log("FILE",typeof file)
   // Once all page refs exist, jump to the initial page (no smooth
   // animation here — this is a "start here" jump, not a nav click).
   useEffect(() => {

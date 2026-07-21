@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { CheckCircle2, Copy, Info } from "lucide-react";
+import { CheckCircle2, Copy, Info,X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { PAYMENT_INFO } from "@/lib/books";
@@ -128,94 +128,108 @@ export function PurchaseRequestButton({ bookId, bookTitle, price, currency }: Pr
   }
 
   return (
-    <div className="mt-2 rounded-2xl border border-border bg-surface p-5 text-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="font-display text-lg text-foreground">Order {bookTitle}</h3>
-          <p className="mt-1 text-muted-foreground">
-            Pay by Mobile Money — no card required. Follow the three steps below.
-          </p>
-        </div>
-        <button
-          onClick={() => setOpen(false)}
-          className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
-        >
-          Close
-        </button>
-      </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
+      
+      {/* Click outside to close backdrop */}
+      <div className="fixed inset-0" onClick={() => setOpen(false)}  aria-hidden="true" />
 
-      {/* Summary */}
-      <div className="mt-4 flex items-center justify-between rounded-xl border border-border/60 bg-background/40 px-4 py-3">
-        <div className="text-muted-foreground">Amount due</div>
-        <div className="font-display text-xl text-foreground">{currency} {price}</div>
-      </div>
-
-      {/* Payment steps */}
-      <ol className="mt-5 space-y-4">
-        <Step
-          n={1}
-          title={`Send ${currency} ${price} via ${PAYMENT_INFO.provider}`}
-          body={
-            <div className="mt-2 space-y-2">
-              <Row label="Number" value={PAYMENT_INFO.number} onCopy={() => copy(PAYMENT_INFO.number)} />
-              <Row label="Account name" value={PAYMENT_INFO.accountName} />
-              <Row label="Amount" value={`${currency} ${price}`} onCopy={() => copy(String(price))} />
-            </div>
-          }
-        />
-        <Step
-          n={2}
-          title="Use your email as the payment reference"
-          body={
-            <div className="mt-2">
-              <Row
-                label="Reference"
-                value={user.email ?? ""}
-                onCopy={() => copy(user.email ?? "")}
-              />
-              <p className="mt-2 text-xs text-muted-foreground">
-                This is how we match your payment to your account. Without it, confirmation is delayed.
-              </p>
-            </div>
-          }
-        />
-        <Step
-          n={3}
-          title="Submit your order for review"
-          body={
-            <p className="mt-2 text-muted-foreground">
-              Tap the button below after you've sent the money. An admin will confirm your payment {PAYMENT_INFO.reviewWindow},
-              and this book will unlock automatically on your account — you'll see the change here without refreshing.
+      {/* Modal Card */}
+      <div className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-surface p-5 text-sm shadow-xl">
+        
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="font-display text-lg text-foreground">Order {bookTitle}</h3>
+            <p className="mt-1 text-muted-foreground">
+              Pay by Mobile Money — no card required. Follow the three steps below.
             </p>
-          }
-        />
-      </ol>
-
-      {/* What to expect */}
-      <div className="mt-5 rounded-xl border border-teal/20 bg-teal/5 p-4">
-        <div className="flex items-center gap-2 text-teal-bright">
-          <CheckCircle2 className="h-4 w-4" />
-          <span className="text-xs font-semibold uppercase tracking-widest">What happens next</span>
+          </div>
+          <button
+            onClick={() => setOpen(false)} 
+            className="rounded-full border border-border p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            aria-label="Close Modal"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-        <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-          <li>• Your order is created with status <span className="text-foreground">Pending</span>.</li>
-          <li>• An admin verifies your Mobile Money payment (usually {PAYMENT_INFO.reviewWindow}).</li>
-          <li>• Once approved, this page updates to <span className="text-foreground">Approved</span> and the reader unlocks.</li>
-          <li>• If the payment can't be found, the order is marked <span className="text-foreground">Declined</span> and you can order again.</li>
-          <li>• You can only read the book after your order is approved.</li>
-        </ul>
-      </div>
 
-      <button
-        onClick={submit}
-        disabled={busy}
-        className="mt-5 w-full rounded-full bg-gradient-teal px-5 py-3 text-sm font-semibold text-primary-foreground shadow-glow transition hover:opacity-90 disabled:opacity-50"
-      >
-        {busy ? "Submitting…" : "I've paid — submit my order"}
-      </button>
-      <p className="mt-3 text-center text-xs text-muted-foreground">
-        Questions about your order? Reply to the confirmation email or contact support with your reference.
-      </p>
+        {/* Summary */}
+        <div className="mt-4 flex items-center justify-between rounded-xl border border-border/60 bg-background/40 px-4 py-3">
+          <div className="text-muted-foreground">Amount due</div>
+          <div className="font-display text-xl text-foreground">
+            {currency} {price}
+          </div>
+        </div>
+
+        {/* Payment steps */}
+        <ol className="mt-5 space-y-4">
+          <Step
+            n={1}
+            title={`Send ${currency} ${price} via ${PAYMENT_INFO.provider}`}
+            body={
+              <div className="mt-2 space-y-2">
+                <Row label="Number" value={PAYMENT_INFO.number} onCopy={() => copy(PAYMENT_INFO.number)} />
+                <Row label="Account name" value={PAYMENT_INFO.accountName} />
+                <Row label="Amount" value={`${currency} ${price}`} onCopy={() => copy(String(price))} />
+              </div>
+            }
+          />
+          <Step
+            n={2}
+            title="Use your email as the payment reference"
+            body={
+              <div className="mt-2">
+                <Row
+                  label="Reference"
+                  value={user.email ?? ""}
+                  onCopy={() => copy(user.email ?? "")}
+                />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  This is how we match your payment to your account. Without it, confirmation is delayed.
+                </p>
+              </div>
+            }
+          />
+          <Step
+            n={3}
+            title="Submit your order for review"
+            body={
+              <p className="mt-2 text-muted-foreground">
+                Tap the button below after you've sent the money. An admin will confirm your payment {PAYMENT_INFO.reviewWindow},
+                and this book will unlock automatically on your account — you'll see the change here without refreshing.
+              </p>
+            }
+          />
+        </ol>
+
+        {/* What to expect */}
+        <div className="mt-5 rounded-xl border border-teal/20 bg-teal/5 p-4">
+          <div className="flex items-center gap-2 text-teal-bright">
+            <CheckCircle2 className="h-4 w-4" />
+            <span className="text-xs font-semibold uppercase tracking-widest">What happens next</span>
+          </div>
+          <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+            <li>• Your order is created with status <span className="text-foreground">Pending</span>.</li>
+            <li>• An admin verifies your Mobile Money payment (usually {PAYMENT_INFO.reviewWindow}).</li>
+            <li>• Once approved, this page updates to <span className="text-foreground">Approved</span> and the reader unlocks.</li>
+            <li>• If the payment can't be found, the order is marked <span className="text-foreground">Declined</span> and you can order again.</li>
+            <li>• You can only read the book after your order is approved.</li>
+          </ul>
+        </div>
+
+        {/* Action Button */}
+        <button
+          onClick={submit}
+          disabled={busy}
+          className="mt-5 w-full rounded-full bg-gradient-teal px-5 py-3 text-sm font-semibold text-primary-foreground shadow-glow transition hover:opacity-90 disabled:opacity-50"
+        >
+          {busy ? "Submitting…" : "I've paid — submit my order"}
+        </button>
+        <p className="mt-3 text-center text-xs text-muted-foreground">
+          Questions about your order? Reply to the confirmation email or contact support with your reference.
+        </p>
+
+      </div>
     </div>
   );
 }

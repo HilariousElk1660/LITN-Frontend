@@ -24,6 +24,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { RequireAdmin } from "@/components/require-admin";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import supported_languages from '../assets/supported_languages.json'
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -95,6 +96,7 @@ function AdminDashboard() {
   const backendUrl = "http://localhost:8000";
   const userid = '1dd309e3-31d0-4f53-b58a-f1d36e6a1dc4'
 
+  console.log("supported_languages", supported_languages);
   const loadBooks = async () => {
     if (!user) return;
 
@@ -377,28 +379,56 @@ function AdminDashboard() {
                           required
                         />
                       </label>
-                      <label className="grid gap-2 text-sm md:col-span-2">
-                        <span>Upload book cover</span>
+
+                      {/* <label className="grid gap-2 text-sm">
+                        <span>Current Book Translation</span>
                         <input
-                          type="file"
-                          accept="image/png,image/jpeg"
-                          onChange={(event) => setFormState((prev) => ({ ...prev, bookCover: event.target.files?.[0] ?? null }))}
-                          className="file:rounded-full file:border-0 file:bg-teal-500 file:px-4 file:py-2 file:text-sm file:text-white"
+                          value={formState.category}
+                          onChange={(event) => setFormState((prev) => ({ ...prev, category: event.target.value }))}
+                          className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
+                          placeholder="E.g. Fiction"
                           required
                         />
-                      </label>
-                      <label className="grid gap-2 text-sm md:col-span-2">
-                        <span>Upload book PDF</span>
-                        <input
-                          type="file"
-                          accept="application/pdf"
-                          onChange={(event) => setFormState((prev) => ({ ...prev, pdfFile: event.target.files?.[0] ?? null }))}
-                          className="file:rounded-full file:border-0 file:bg-teal-500 file:px-4 file:py-2 file:text-sm file:text-white"
+                      </label> */}
+
+                      <label className="grid gap-2 text-sm">
+                        <span>Current translation</span>
+                        <select
+                            className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
+                        >
+                            {Object.entries(supported_languages).map(([key, value]) => (
+                                <option key={key} value={key}>
+                                    {value}
+                                </option>
+                            ))}
+                        </select>
+                        {/* <input
+                          value={formState.category}
+                          onChange={(event) => setFormState((prev) => ({ ...prev, category: event.target.value }))]
+                          className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
+                          placeholder="E.g. Fiction"
                           required
-                        />
-                        <span className="text-xs text-muted-foreground">Only PDF files are accepted.</span>
+                        /> */}
                       </label>
-                      <label className="grid gap-2 text-sm md:col-span-2">
+
+                      <label className="grid gap-2 text-sm">
+                        <span>Translate book to</span>
+                        <select
+                            className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
+                        >
+                            <option value="french">French</option>
+                            <option value="english">English</option>
+                       
+                        </select>
+                        {/* <input
+                          value={formState.category}
+                          onChange={(event) => setFormState((prev) => ({ ...prev, category: event.target.value }))]
+                          className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
+                          placeholder="E.g. Fiction"
+                          required
+                        /> */}
+                      </label>
+                       <label className="grid gap-2 text-sm">
                         <span>Price</span>
                         <input
                           type="number"
@@ -411,7 +441,29 @@ function AdminDashboard() {
                           required
                         />
                       </label>
-                      <div className="md:col-span-2 text-right">
+                      {/* <label className="grid gap-2 text-sm md:col-span-2">
+                        <span>Upload book cover</span>
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg"
+                          onChange={(event) => setFormState((prev) => ({ ...prev, bookCover: event.target.files?.[0] ?? null }))}
+                          className="file:rounded-full file:border-0 file:bg-teal-500 file:px-4 file:py-2 file:text-sm file:text-white"
+                          required
+                        />
+                      </label> */}
+                      <label className="grid gap-2 text-sm">
+                        <span>Upload book PDF</span>
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          onChange={(event) => setFormState((prev) => ({ ...prev, pdfFile: event.target.files?.[0] ?? null }))}
+                          className="file:rounded-full file:border-0 file:bg-teal-500 file:px-4 file:py-2 file:text-sm file:text-white"
+                          required
+                        />
+                        <span className="text-xs text-muted-foreground">Only PDF files are accepted.</span>
+                      </label>
+                     
+                      <div className="md:col-span-2 text-center">
                         <button
                           type="submit"
                           disabled={uploading}

@@ -67,7 +67,8 @@ function Reader() {
       }
       
       const bookData = await res.json();
-      setBook(bookData);
+      setBook({...bookData, "pdf_file_url": JSON.parse(bookData.pdf_file_url)});
+      console.log(bookData)
 
       const readerId = user?.id || "1dd309e3-31d0-4f53-b58a-f1d36e6a1dc4";
       const res2 = await fetch(`${base}/reading_progress?book_id=${bookId}&reader_id=${readerId}`);
@@ -98,7 +99,8 @@ function Reader() {
 
 function ReaderInner({ book, pageStoppedAt, book_id }: { book: any; pageStoppedAt: number; book_id: string }) {
   
-
+  const { user } = useAuth();
+  user.preffered_language = "english";
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -113,7 +115,7 @@ function ReaderInner({ book, pageStoppedAt, book_id }: { book: any; pageStoppedA
       {!pageStoppedAt? <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading PDF…</div>: (
         <PdfViewer
           initialPage={pageStoppedAt}
-          file={book?.pdf_file_url}
+          file={book?.pdf_file_url[user?.preffered_language || 'english']} 
           book_id={book_id}
         />
       )}
