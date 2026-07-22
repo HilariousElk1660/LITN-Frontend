@@ -24,6 +24,8 @@ import { SiteFooter } from "@/components/site-footer";
 import { RequireAdmin } from "@/components/require-admin";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import supported_languages from '../assets/supported_languages.json'
+import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -37,7 +39,7 @@ export const Route = createFileRoute("/admin")({
 
 type RequestRow = {
   request_id?: string;
-  id?: string;
+  reader_id?: string;
   reader_name: string;
   reader_email: string;
   book_id: string;
@@ -93,14 +95,14 @@ function AdminDashboard() {
   });
 
   const backendUrl = "http://localhost:8000";
-  const userid = '1dd309e3-31d0-4f53-b58a-f1d36e6a1dc4'
+  
 
+  console.log("supported_languages", supported_languages);
   const loadBooks = async () => {
     if (!user) return;
-
     try {
      
-      const res = await fetch(`${backendUrl}/admin_books?admin_id=${userid}`, {
+      const res = await fetch(`${backendUrl}/admin_books?admin_id=${user?.user_id}`, {
         method: "GET",
       });
       const data = await res.json();
@@ -119,7 +121,7 @@ function AdminDashboard() {
      try {
       setLoading(true);
       //fetching book requests
-      const res = await fetch(`${backendUrl}/book_requests?admin_id=${userid}`,{
+      const res = await fetch(`${backendUrl}/book_requests?admin_id=${user?.user_id}`,{
         'method': 'GET',
       })
       const data = await res.json();
@@ -163,11 +165,23 @@ function AdminDashboard() {
     return map;
   }, [requests]);
 
-  const updateRequestStatus = async (id: string, status: RequestRow["status"]) => {
+  const updateRequestStatus = async (id: string, request_details: RequestRow, status:RequestRow["status"]) => {
     try {
+      const token = api.getToken()
       setLoading(true);
-      const res = await fetch(`${backendUrl}/update_book_request?request_id=${id}&status=${status}`, {
-        method: "PATCH",
+      const payload = {
+        "request_id": request_details['request_id'],
+        "status": status,
+        "book_id": request_details["book_id"],
+        "reader_id": request_details["reader_id"]
+      }
+      const res = await fetch(`${backendUrl}/update_book_request`, {
+        'method': "PUT",
+        'headers': {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        'body':JSON.stringify(payload)
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => null);
@@ -208,17 +222,13 @@ function AdminDashboard() {
     event.preventDefault();
     if (!user) return;
 
-    if (!formState.bookCover || !formState.pdfFile) {
-      toast.error("Please attach a cover image and a PDF file.");
-      return;
-    }
     if (formState.pdfFile.type !== "application/pdf") {
       toast.error("Book file must be a PDF.");
       return;
     }
 
     const formData = new FormData();
-    formData.append("admin_id", userid);
+    formData.append("admin_id", user?.user_id);
     formData.append("uploaded_by", user.email ?? "");
     formData.append("author_name", formState.authorName);
     formData.append("book_name", formState.bookName);
@@ -226,7 +236,6 @@ function AdminDashboard() {
     formData.append("published_date", formState.publishedDate);
     formData.append("price", formState.price);
     formData.append("book_division_type", "full");
-    formData.append("book_cover", formState.bookCover);
     formData.append("pdf_file", formState.pdfFile);
 
     try {
@@ -377,28 +386,56 @@ function AdminDashboard() {
                           required
                         />
                       </label>
-                      <label className="grid gap-2 text-sm md:col-span-2">
-                        <span>Upload book cover</span>
+
+                      {/* <label className="grid gap-2 text-sm">
+                        <span>Current Book Translation</span>
                         <input
-                          type="file"
-                          accept="image/png,image/jpeg"
-                          onChange={(event) => setFormState((prev) => ({ ...prev, bookCover: event.target.files?.[0] ?? null }))}
-                          className="file:rounded-full file:border-0 file:bg-teal-500 file:px-4 file:py-2 file:text-sm file:text-white"
+                          value={formState.category}
+                          onChange={(event) => setFormState((prev) => ({ ...prev, category: event.target.value }))}
+                          className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
+                          placeholder="E.g. Fiction"
                           required
                         />
-                      </label>
-                      <label className="grid gap-2 text-sm md:col-span-2">
-                        <span>Upload book PDF</span>
-                        <input
-                          type="file"
-                          accept="application/pdf"
-                          onChange={(event) => setFormState((prev) => ({ ...prev, pdfFile: event.target.files?.[0] ?? null }))}
-                          className="file:rounded-full file:border-0 file:bg-teal-500 file:px-4 file:py-2 file:text-sm file:text-white"
+                      </label> */}
+
+                      <label className="grid gap-2 text-sm">
+                        <span>Current translation</span>
+                        <select
+                            className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
+                        >
+                            {Object.entries(supported_languages).map(([key, value]) => (
+                                <option key={key} value={key}>
+                                    {value}
+                                </option>
+                            ))}
+                        </select>
+                        {/* <input
+                          value={formState.category}
+                          onChange={(event) => setFormState((prev) => ({ ...prev, category: event.target.value }))]
+                          className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
+                          placeholder="E.g. Fiction"
                           required
-                        />
-                        <span className="text-xs text-muted-foreground">Only PDF files are accepted.</span>
+                        /> */}
                       </label>
-                      <label className="grid gap-2 text-sm md:col-span-2">
+
+                      <label className="grid gap-2 text-sm">
+                        <span>Translate book to</span>
+                        <select
+                            className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
+                        >
+                            <option value="french">French</option>
+                            <option value="english">English</option>
+                       
+                        </select>
+                        {/* <input
+                          value={formState.category}
+                          onChange={(event) => setFormState((prev) => ({ ...prev, category: event.target.value }))]
+                          className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
+                          placeholder="E.g. Fiction"
+                          required
+                        /> */}
+                      </label>
+                       <label className="grid gap-2 text-sm">
                         <span>Price</span>
                         <input
                           type="number"
@@ -411,7 +448,29 @@ function AdminDashboard() {
                           required
                         />
                       </label>
-                      <div className="md:col-span-2 text-right">
+                      {/* <label className="grid gap-2 text-sm md:col-span-2">
+                        <span>Upload book cover</span>
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg"
+                          onChange={(event) => setFormState((prev) => ({ ...prev, bookCover: event.target.files?.[0] ?? null }))}
+                          className="file:rounded-full file:border-0 file:bg-teal-500 file:px-4 file:py-2 file:text-sm file:text-white"
+                          required
+                        />
+                      </label> */}
+                      <label className="grid gap-2 text-sm">
+                        <span>Upload book PDF</span>
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          onChange={(event) => setFormState((prev) => ({ ...prev, pdfFile: event.target.files?.[0] ?? null }))}
+                          className="file:rounded-full file:border-0 file:bg-teal-500 file:px-4 file:py-2 file:text-sm file:text-white"
+                          required
+                        />
+                        <span className="text-xs text-muted-foreground">Only PDF files are accepted.</span>
+                      </label>
+                     
+                      <div className="md:col-span-2 text-center">
                         <button
                           type="submit"
                           disabled={uploading}
@@ -594,14 +653,14 @@ function AdminDashboard() {
                                     <div className="flex justify-end gap-2 flex-wrap">
                                       <button
                                         type="button"
-                                        onClick={() => updateRequestStatus(requestId, "paid")}
+                                        onClick={() => updateRequestStatus(requestId,request, "paid")}
                                         className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground"
                                       >
                                         Accept
                                       </button>
                                       <button
                                         type="button"
-                                        onClick={() => updateRequestStatus(requestId, "declined")}
+                                        onClick={() => updateRequestStatus(requestId, request,"declined")}
                                         className="rounded-full border border-destructive/40 px-3 py-1.5 text-xs text-destructive"
                                       >
                                         Decline
