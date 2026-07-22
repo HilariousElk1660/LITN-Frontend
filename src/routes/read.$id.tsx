@@ -56,6 +56,7 @@ function Reader() {
   const [book, setBook] = useState(null);
   const [pageStoppedAt, setPageStoppedAt] = useState(0);
   const { id } = Route.useParams();
+  const {chapter} = Route.useSearch()
   const { user, loading, backendUrl } = useAuth();
  
   const fetchBook = async (bookId: string) => {
@@ -70,15 +71,14 @@ function Reader() {
       setBook({...bookData, "pdf_file_url": JSON.parse(bookData.pdf_file_url)});
       console.log(bookData)
 
-      const readerId = user?.id || "1dd309e3-31d0-4f53-b58a-f1d36e6a1dc4";
+      const readerId = user?.user_id
       const res2 = await fetch(`${base}/reading_progress?book_id=${bookId}&reader_id=${readerId}`);
       if (res2.ok) {
         const data = await res2.json();
-        if (data.page_stopped_at !== undefined) {
-          setPageStoppedAt(Number(data.page_stopped_at));
-        }else{
-          setPageStoppedAt(1);
-        }
+        // let chapPage = chapter? JSON.parse(bookData.book_divisions).find((book:any) => book.start_page == chapter):0
+        let page = chapter? Number(chapter): data.current_page !== undefined? Number(data.current_page):1
+        console.log("page",page)
+        setPageStoppedAt(page)
       }
     } catch (e) {
       console.error("Error fetching book:", e);
@@ -89,7 +89,7 @@ function Reader() {
     if (!loading) {
       fetchBook(id);
     }
-  }, [id, loading, user?.id, backendUrl]);
+  }, [id, loading, user?.user_id, backendUrl]);
   return (
     <AccessGate bookId={"d"}>
       <ReaderInner book={book} pageStoppedAt={pageStoppedAt} book_id={id} />
@@ -100,7 +100,6 @@ function Reader() {
 function ReaderInner({ book, pageStoppedAt, book_id }: { book: any; pageStoppedAt: number; book_id: string }) {
   
   const { user } = useAuth();
-  user.preffered_language = "english";
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -115,7 +114,7 @@ function ReaderInner({ book, pageStoppedAt, book_id }: { book: any; pageStoppedA
       {!pageStoppedAt? <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading PDF…</div>: (
         <PdfViewer
           initialPage={pageStoppedAt}
-          file={book?.pdf_file_url[user?.preffered_language || 'english']} 
+          file={book?.pdf_file_url[user?.prefferedLanguage || 'english']} 
           book_id={book_id}
         />
       )}

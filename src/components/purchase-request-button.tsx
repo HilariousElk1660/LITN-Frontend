@@ -5,6 +5,8 @@ import { CheckCircle2, Copy, Info,X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { PAYMENT_INFO } from "@/lib/books";
+import { useBooks } from "@/hooks/use-books";
+import { api } from "@/lib/api";
 
 type Status = "pending" | "paid" | "declined";
 
@@ -15,42 +17,23 @@ type Props = {
   currency: string;
 };
 
-export function PurchaseRequestButton({ bookId, bookTitle, price, currency }: Props) {
-  const { user, loading } = useAuth();
+export function PurchaseRequestButton({ bookId, adminId, bookTitle, price, currency }: Props) {
+  const { user, loading, backendUrl } = useAuth();
+  const {bookRequests, setBookRequests} = useBooks()
   const [status, setStatus] = useState<Status | null>(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-
+  console.log("requests",bookRequests)
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from("purchase_requests")
-      .select("status")
-      .eq("user_id", user.id)
-      .eq("book_id", bookId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => setStatus((data?.status as Status) ?? null));
+    if (bookRequests){
+      setStatus(bookRequests.find((book) => book.book_id == bookId)?.status)
+    }
 
-    const channel = supabase
-      .channel(`pr_user_${user.id}_${bookId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "purchase_requests", filter: `user_id=eq.${user.id}` },
-        (payload) => {
-          const row = (payload.new ?? payload.old) as { book_id: string; status: Status };
-          if (row.book_id === bookId) setStatus((payload.new as any)?.status ?? null);
-        },
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, bookId]);
+  }, [user, bookId, bookRequests]);
 
   if (loading) return null;
-
+  
   if (!user) {
     return (
       <Link
@@ -92,21 +75,44 @@ export function PurchaseRequestButton({ bookId, bookTitle, price, currency }: Pr
   }
 
   const submit = async () => {
-    setBusy(true);
-    const { error } = await supabase.from("purchase_requests").insert({
-      user_id: user.id,
-      user_email: user.email ?? "",
+    setBusy(true)
+    const payload= {
       book_id: bookId,
-      book_title: bookTitle,
-      amount: price,
-      currency,
-      status: "pending",
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    setStatus("pending");
-    setOpen(false);
-    toast.success("Order submitted — we'll confirm your payment shortly.");
+      admin_id: adminId,
+      reader_id: user?.user_id,
+      reader_name: user?.fullname,
+      reader_email: user?.email,
+      book_name:bookTitle,
+      book_price: price
+    }
+    const token = api.getToken()
+
+    try {
+
+      const res = await fetch(`${backendUrl}/book_request`,{
+          'method':'POST',
+          'headers': {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+          'body':JSON.stringify(payload)
+      });
+
+      const data = await res.json()
+      console.log("NEW",data)
+      if (res.ok){
+        setOpen(false)
+        setBookRequests([...bookRequests,data?.new_request[0]])
+      }else{
+        toast.error("Was unable to send book request please try again later")
+        setOpen(false)
+      }
+
+    } catch(e){
+      console.error("error sending book request",e)
+    } finally{
+      setBusy(false)
+    }
   };
 
   const copy = (text: string) => {

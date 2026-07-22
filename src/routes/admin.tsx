@@ -25,6 +25,7 @@ import { RequireAdmin } from "@/components/require-admin";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import supported_languages from '../assets/supported_languages.json'
+import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -38,7 +39,7 @@ export const Route = createFileRoute("/admin")({
 
 type RequestRow = {
   request_id?: string;
-  id?: string;
+  reader_id?: string;
   reader_name: string;
   reader_email: string;
   book_id: string;
@@ -94,15 +95,14 @@ function AdminDashboard() {
   });
 
   const backendUrl = "http://localhost:8000";
-  const userid = '1dd309e3-31d0-4f53-b58a-f1d36e6a1dc4'
+  
 
   console.log("supported_languages", supported_languages);
   const loadBooks = async () => {
     if (!user) return;
-
     try {
      
-      const res = await fetch(`${backendUrl}/admin_books?admin_id=${userid}`, {
+      const res = await fetch(`${backendUrl}/admin_books?admin_id=${user?.user_id}`, {
         method: "GET",
       });
       const data = await res.json();
@@ -121,7 +121,7 @@ function AdminDashboard() {
      try {
       setLoading(true);
       //fetching book requests
-      const res = await fetch(`${backendUrl}/book_requests?admin_id=${userid}`,{
+      const res = await fetch(`${backendUrl}/book_requests?admin_id=${user?.user_id}`,{
         'method': 'GET',
       })
       const data = await res.json();
@@ -165,11 +165,23 @@ function AdminDashboard() {
     return map;
   }, [requests]);
 
-  const updateRequestStatus = async (id: string, status: RequestRow["status"]) => {
+  const updateRequestStatus = async (id: string, request_details: RequestRow, status:RequestRow["status"]) => {
     try {
+      const token = api.getToken()
       setLoading(true);
-      const res = await fetch(`${backendUrl}/update_book_request?request_id=${id}&status=${status}`, {
-        method: "PATCH",
+      const payload = {
+        "request_id": request_details['request_id'],
+        "status": status,
+        "book_id": request_details["book_id"],
+        "reader_id": request_details["reader_id"]
+      }
+      const res = await fetch(`${backendUrl}/update_book_request`, {
+        'method': "PUT",
+        'headers': {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        'body':JSON.stringify(payload)
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => null);
@@ -210,17 +222,13 @@ function AdminDashboard() {
     event.preventDefault();
     if (!user) return;
 
-    if (!formState.bookCover || !formState.pdfFile) {
-      toast.error("Please attach a cover image and a PDF file.");
-      return;
-    }
     if (formState.pdfFile.type !== "application/pdf") {
       toast.error("Book file must be a PDF.");
       return;
     }
 
     const formData = new FormData();
-    formData.append("admin_id", userid);
+    formData.append("admin_id", user?.user_id);
     formData.append("uploaded_by", user.email ?? "");
     formData.append("author_name", formState.authorName);
     formData.append("book_name", formState.bookName);
@@ -228,7 +236,6 @@ function AdminDashboard() {
     formData.append("published_date", formState.publishedDate);
     formData.append("price", formState.price);
     formData.append("book_division_type", "full");
-    formData.append("book_cover", formState.bookCover);
     formData.append("pdf_file", formState.pdfFile);
 
     try {
@@ -646,14 +653,14 @@ function AdminDashboard() {
                                     <div className="flex justify-end gap-2 flex-wrap">
                                       <button
                                         type="button"
-                                        onClick={() => updateRequestStatus(requestId, "paid")}
+                                        onClick={() => updateRequestStatus(requestId,request, "paid")}
                                         className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground"
                                       >
                                         Accept
                                       </button>
                                       <button
                                         type="button"
-                                        onClick={() => updateRequestStatus(requestId, "declined")}
+                                        onClick={() => updateRequestStatus(requestId, request,"declined")}
                                         className="rounded-full border border-destructive/40 px-3 py-1.5 text-xs text-destructive"
                                       >
                                         Decline

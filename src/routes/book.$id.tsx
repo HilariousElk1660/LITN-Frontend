@@ -4,6 +4,8 @@ import { SiteFooter } from "@/components/site-footer";
 import { PurchaseRequestButton } from "@/components/purchase-request-button";
 import { getBook } from "@/lib/books";
 import { useEffect, useState } from "react";
+import { useBooks } from "@/hooks/use-books";
+import { Book } from "lucide-react";
 
 export const Route = createFileRoute("/book/$id")({
   loader: ({ params }) => {
@@ -32,9 +34,10 @@ export const Route = createFileRoute("/book/$id")({
 
 function BookPage() {
   const [book,setBook] = useState({});
+  const [access,setAccess] = useState(false)
   const backend_url= "http://localhost:8000"
-  const book_id = "64445948-f243-4563-a8ab-65d6add582f0"
-  // Route.useParams().id
+  const book_id = Route.useParams().id
+  const {bookRequests} = useBooks()
 
   const fetchBook = async () => {
     const bookData = await fetch(`${backend_url}/book/${book_id}`)
@@ -44,6 +47,12 @@ function BookPage() {
     setBook({...bookJson,"book_divisions":JSON.parse(bookJson["book_divisions"]), "stuff":[]});
 
   };
+  useEffect(()=>{
+    console.log("CHECK",bookRequests)
+    if (!bookRequests.length) return;
+    setAccess(bookRequests?.find(req => req.book_id === book_id).status == "paid"); 
+
+  },[bookRequests,book])
 
   useEffect(() => {
     fetchBook();
@@ -58,15 +67,16 @@ function BookPage() {
             <div className="overflow-hidden rounded-2xl shadow-glow">
               <img src={book.book_cover_url} alt={book.book_name} className="w-full" />
             </div>
-            <Link
+           {access && <Link
               to="/read/$id"
               params={{ id: book.book_id }}
               className="mt-6 flex w-full justify-center rounded-full bg-gradient-teal px-5 py-3 text-sm font-semibold text-primary-foreground shadow-glow"
             >
-              Start reading
-            </Link>
+              Read
+            </Link>}
             <PurchaseRequestButton
               bookId={book.book_id}
+              adminId={book.admin_id}
               bookTitle={book.book_name}
               price={book.subscription_price}
               currency={book.currency  || "R"}
@@ -82,13 +92,15 @@ function BookPage() {
               <span>{book.chapters} chapters</span>
               {/* <span>{book.status === "Serialised" ? "New chapter weekly" : "Complete"}</span> */}
             </div>
-            <p className="mt-8 max-w-2xl text-lg leading-relaxed">{book.synopsis}</p>
-
+            {/* <p className="mt-8 max-w-2xl text-lg leading-relaxed">{book.synopsis}</p> */}
             <div className="mt-12">
-              <h2 className="font-display text-2xl">Chapters</h2>   f
+              <h2 className="font-display text-2xl">Chapters</h2>   
               <ol className="mt-4 divide-y divide-border/60 rounded-2xl border border-border/60 bg-surface">
-              {book && book.book_divisions.map((name, i) => (
-                <li>{name.title}</li>
+              {book.book_divisions && book.book_divisions.map((name, i) => (
+                <li key={i} className="flex items-center justify-between px-5 py-3 text-sm">
+                    <span><span className="text-muted-foreground">{String(i + 1).padStart(2, "0")}</span>  <span className="ml-3">{name.title}</span></span>
+                    {access && <Link to='/read/$id' params={{ id: book.book_id }} search={{ chapter: name.start_page }} className="text-teal-bright hover:underline">Read</Link>}
+                  </li>
               ))
               }
                 {/* {book["book_divisions"].map((name, i) => (
