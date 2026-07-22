@@ -8,6 +8,7 @@ type StoredUser = {
   email: string;
   fullname: string;
   role: Role;
+  prefferedLanguage: string;
 };
 
 type AuthCtx = {
@@ -18,6 +19,7 @@ type AuthCtx = {
   loading: boolean;
   signOut: () => void;
   refresh: () => void;
+  backendUrl: String;
 };
 
 const Ctx = createContext<AuthCtx>({
@@ -28,11 +30,13 @@ const Ctx = createContext<AuthCtx>({
   loading: true,
   signOut: () => {},
   refresh: () => {},
+  backendUrl: ""
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<StoredUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const backendUrl = import.meta.env.VITE_API_URL
 
   const refresh = () => {
     setUser(api.getUser());
@@ -60,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = role === "admin" || isSuperAdmin;
 
   return (
-    <Ctx.Provider value={{ user, role, isAdmin, isSuperAdmin, loading, signOut, refresh }}>
+    <Ctx.Provider value={{ user, role, isAdmin, isSuperAdmin, loading, signOut, refresh, backendUrl }}>
       {children}
     </Ctx.Provider>
   );

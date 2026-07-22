@@ -1,4 +1,6 @@
-const BASE_URL = import.meta.env.DEV ? "" : import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+import supportedLanguages from '../assets/supported_languages.json'
+
 
 export interface AuthResponse {
   user_id: string;
@@ -70,6 +72,8 @@ export const api = {
 
   getUser() {
     const raw = localStorage.getItem("user");
-    return raw ? JSON.parse(raw) : null;
+    const detectedLang = navigator.language.slice(0, 2) || 'en';
+    const lang = supportedLanguages[detectedLang]
+    return raw ? { ...JSON.parse(raw),"prefferedLanguage":lang } : null;
   },
 };

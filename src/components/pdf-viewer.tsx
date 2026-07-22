@@ -21,7 +21,7 @@ export default function PdfViewer({initialPage = 5,file,book_id}) {
     setNumPages(numPages);
     pageRefs.current = Array(numPages).fill(null);
   }
-
+  console.log("FILE",typeof file)
   // Once all page refs exist, jump to the initial page (no smooth
   // animation here — this is a "start here" jump, not a nav click).
   useEffect(() => {
@@ -94,7 +94,7 @@ export default function PdfViewer({initialPage = 5,file,book_id}) {
   useEffect(() => {
     if (!book_id) return;
     const base = backendUrl || "http://localhost:8000";
-    const readerId = "1dd309e3-31d0-4f53-b58a-f1d36e6a1dc4";
+    const readerId = user?.user_id
 
     const delayDebounceFn = setTimeout(() => {
       fetch(`${base}/save_reading_progress?reader_id=${readerId}&book_id=${book_id}&page_stopped_at=${pageNumber}`, {
