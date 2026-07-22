@@ -173,7 +173,8 @@ function AdminDashboard() {
         "request_id": request_details['request_id'],
         "status": status,
         "book_id": request_details["book_id"],
-        "reader_id": request_details["reader_id"]
+        "reader_id": request_details["reader_id"],
+        "reader_email":request_details['reader_email']
       }
       const res = await fetch(`${backendUrl}/update_book_request`, {
         'method': "PUT",

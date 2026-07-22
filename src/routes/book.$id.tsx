@@ -50,7 +50,7 @@ function BookPage() {
   useEffect(()=>{
     console.log("CHECK",bookRequests)
     if (!bookRequests.length) return;
-    setAccess(bookRequests?.find(req => req.book_id === book_id).status == "paid"); 
+    setAccess(bookRequests?.find(req => req.book_id === book_id)?.status == "paid"); 
 
   },[bookRequests,book])
 
