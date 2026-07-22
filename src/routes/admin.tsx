@@ -15,6 +15,7 @@ import {
   X,
   Clock,
   User,
+  Crown,
   Calendar,
   Tag,
   DollarSign,
@@ -26,6 +27,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import supported_languages from '../assets/supported_languages.json'
 import { api } from "@/lib/api";
+import { setDate } from "date-fns";
+import { ro } from "date-fns/locale";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -72,18 +76,30 @@ const VIEWS = [
   { key: "books", label: "Uploaded books", icon: BookOpen },
   { key: "requests", label: "Book requests", icon: FileText },
   { key: "details", label: "Admin details", icon: User },
+  { key: "super-admin", label: "Super Admin", icon: Crown },
 ] as const;
 
 type ViewKey = (typeof VIEWS)[number]["key"];
 
 function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, isSuperAdmin, backendUrl } = useAuth();
+  const token = api.getToken();
   const [view, setView] = useState<ViewKey>("books");
   const [requestTab, setRequestTab] = useState<RequestRow["status"]>("pending");
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [books, setBooks] = useState<AdminBook[]>([]);
+  const [users, setUsers] = useState<Array<{ id: string; email: string | null; fullname: string | null; role: "user" | "admin" | "super-admin" }>>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [promotingUserId, setPromotingUserId] = useState<string | null>(null);
+  const [promotingAction, setPromotingAction] = useState<"admin" | "super-admin" | null>(null);
   const [uploading, setUploading] = useState(false);
+  
+  // State for Add Admin Modal
+  const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
+  const [addAdminEmail, setAddAdminEmail] = useState("");
+  const [addAdminRole, setAddAdminRole] = useState<"admin" | "super-admin">("admin");
+  const [isSubmittingAddAdmin, setIsSubmittingAddAdmin] = useState(false);
   const [formState, setFormState] = useState({
     bookName: "",
     authorName: "",
@@ -94,7 +110,7 @@ function AdminDashboard() {
     pdfFile: null as File | null,
   });
 
-  const backendUrl = "http://localhost:8000";
+  
   
 
   console.log("supported_languages", supported_languages);
@@ -144,6 +160,18 @@ function AdminDashboard() {
   useEffect(() => {
     if (user) loadAll();
   }, [user]);
+
+  useEffect(() => {
+    if (user && isSuperAdmin) {
+      loadSuperAdminUsers();
+    }
+  }, [user, isSuperAdmin, view]);
+
+  useEffect(() => {
+    if (!isSuperAdmin && view === "super-admin") {
+      setView("details");
+    }
+  }, [isSuperAdmin, view]);
 
   const counts = useMemo(() => {
     return {
@@ -195,6 +223,78 @@ function AdminDashboard() {
       toast.error("Unable to update request status.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSuperAdminUsers = async () => {
+    if (!isSuperAdmin) return;
+    try {
+      
+      const res = await fetch(`${backendUrl}/admins`,{
+        'method':'GET',
+        'headers':{'Authorization': `Bearer ${token}`}
+      })
+
+      const data = await res.json();
+      setUsers(data)
+    } catch (error) {
+      console.error("Failed to load super admin users", error);
+      toast.error("Unable to load users for Super Admin.");
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const promoteUserToRole = async (email:string, userId: string, role: "admin" | "super-admin") => {
+    if (!isSuperAdmin) return;
+    try {
+      setPromotingUserId(userId);
+      setPromotingAction(role);
+
+      const res = await fetch(`${backendUrl}/change_role?email=${email}&role=${role}`,{
+        'method':'PATCH',
+        'headers':{'Authorization': `Bearer ${token}`},
+      })
+
+      const data = await res.json();
+      await loadSuperAdminUsers();
+    } catch (error) {
+      console.error("Failed to promote user", error);
+      toast.error(`Unable to promote user to ${role}.`);
+    } finally {
+      setPromotingUserId(null);
+      setPromotingAction(null);
+    }
+  };
+
+  const handleAddAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addAdminEmail) {
+      toast.error("Please enter an email address.");
+      return;
+    }
+    setIsSubmittingAddAdmin(true);
+    try {
+      const res = await fetch(`${backendUrl}/change_role?email=${encodeURIComponent(addAdminEmail)}&role=${addAdminRole}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || "Failed to change role");
+      }
+      toast.success(`User role updated to ${addAdminRole}.`);
+      setIsAddAdminOpen(false);
+      setAddAdminEmail("");
+      setAddAdminRole("admin");
+      await loadSuperAdminUsers();
+    } catch (error: any) {
+      console.error("Failed to add admin user:", error);
+      toast.error(error.message || "Failed to update user role.");
+    } finally {
+      setIsSubmittingAddAdmin(false);
     }
   };
 
@@ -312,6 +412,8 @@ function AdminDashboard() {
               <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-muted-foreground">Dashboard views</h2>
               <div className="space-y-2">
                 {VIEWS.map(({ key, label, icon: Icon }) => (
+                  <>
+                  {key == "super-admin" && !isSuperAdmin ? "" :(
                   <button
                     key={key}
                     type="button"
@@ -325,7 +427,10 @@ function AdminDashboard() {
                     <Icon className="h-4 w-4" />
                     {label}
                   </button>
-                ))}
+                  )
+                }
+                </>
+                    ))}
               </div>
             </aside>
 
@@ -689,13 +794,14 @@ function AdminDashboard() {
                       </p>
                     </div>
                     <div className="rounded-3xl border border-border/70 bg-background p-4 text-sm text-muted-foreground">
-                      Role: <span className="font-semibold text-foreground">Admin</span>
+                      Role: <span className="font-semibold text-foreground">{isSuperAdmin ? "Super Admin" : "Admin"}</span>
                     </div>
                   </div>
+
                   <div className="mt-8 grid gap-5 lg:grid-cols-3">
                     <div className="rounded-3xl border border-border/60 bg-background p-6">
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Name</p>
-                      <p className="mt-3 text-lg font-semibold">{user?.user_metadata?.full_name ?? user?.email ?? "Admin"}</p>
+                      <p className="mt-3 text-lg font-semibold">{user?.fullname ?? user?.email ?? "Admin"}</p>
                     </div>
                     <div className="rounded-3xl border border-border/60 bg-background p-6">
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Email</p>
@@ -703,9 +809,178 @@ function AdminDashboard() {
                     </div>
                     <div className="rounded-3xl border border-border/60 bg-background p-6">
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Role</p>
-                      <p className="mt-3 text-lg font-semibold">Admin</p>
+                      <p className="mt-3 text-lg font-semibold">{isSuperAdmin ? "Super Admin" : "Admin"}</p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {view === "super-admin" && isSuperAdmin && (
+                <div className="space-y-4 rounded-3xl border border-border/60 bg-surface p-6">
+                  
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h2 className="text-2xl font-semibold">Super Admin</h2>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Promote readers to admin accounts from one place.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddAdminOpen(true)}
+                      className="inline-flex items-center justify-center gap-2 rounded-3xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700 cursor-pointer"
+                    >
+                      <User className="h-4 w-4" />
+                      Add user as admin
+                    </button>
+                  </div>
+
+                  <Dialog open={isAddAdminOpen} onOpenChange={setIsAddAdminOpen}>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Add User as Admin</DialogTitle>
+                        <DialogDescription>
+                          Promote a user by entering their email address and selecting their new role.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <form onSubmit={handleAddAdmin} className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <label htmlFor="email" className="text-sm font-medium text-foreground">
+                            User Email
+                          </label>
+                          <input
+                            id="email"
+                            type="email"
+                            required
+                            placeholder="user@example.com"
+                            value={addAdminEmail}
+                            onChange={(e) => setAddAdminEmail(e.target.value)}
+                            className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label htmlFor="role" className="text-sm font-medium text-foreground">
+                            Role
+                          </label>
+                          <select
+                            id="role"
+                            value={addAdminRole}
+                            onChange={(e) => setAddAdminRole(e.target.value as "admin" | "super-admin")}
+                            className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
+                          >
+                            <option value="admin">Admin</option>
+                            <option value="super-admin">Super Admin</option>
+                          </select>
+                        </div>
+                        <div className="flex justify-end gap-3 pt-4">
+                          <button
+                            type="button"
+                            onClick={() => setIsAddAdminOpen(false)}
+                            className="rounded-3xl border border-border px-4 py-2 text-sm font-semibold transition hover:bg-muted cursor-pointer bg-transparent text-foreground"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={isSubmittingAddAdmin}
+                            className="rounded-3xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-60 cursor-pointer"
+                          >
+                            {isSubmittingAddAdmin ? "Updating..." : "Add Admin"}
+                          </button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+
+                  {loadingUsers ? (
+                    <div className="rounded-3xl border border-border/60 bg-background p-8 text-center text-muted-foreground">Loading users…</div>
+                  ) : users.length === 0 ? (
+                    <div className="rounded-3xl border border-border/60 bg-background p-8 text-center text-muted-foreground">
+                      No users found.
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-3xl border border-border/60 bg-surface">
+                      <table className="w-full text-sm">
+                        <thead className="bg-background/40 text-left text-xs uppercase tracking-widest text-muted-foreground">
+                          <tr>
+                            <th className="px-5 py-3">User</th>
+                            <th className="px-5 py-3">Email</th>
+                            <th className="px-5 py-3">Role</th>
+                            <th className="px-5 py-3 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/60">
+                          {users.map((appUser) => (
+                            <tr key={appUser.id}>
+                              <td className="px-5 py-4">
+                                <div className="font-medium">{appUser.fullname ?? appUser.email ?? appUser.id}</div>
+                              </td>
+                              <td className="px-5 py-4 text-muted-foreground">{appUser.email ?? "—"}</td>
+                              <td className="px-5 py-4">
+                                <span className="rounded-full bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
+                                  {appUser.role === "super-admin" ? "Super Admin" : appUser.role === "admin" ? "Admin" : "User"}
+                                </span>
+                              </td>
+                              <td className="px-5 py-4 text-right display-flex">
+                                {appUser.role === "user" ? (
+                                  <div className="flex justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      disabled={promotingUserId === appUser.id && promotingAction === "admin"}
+                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "admin")}
+                                      className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-60"
+                                    >
+                                      {"Make admin"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={promotingUserId === appUser.id && promotingAction === "super-admin"}
+                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "super-admin")}
+                                      className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300 disabled:opacity-60"
+                                    >
+                                      { "Make super admin"}
+                                    </button>
+                                  </div>
+                                ) : appUser.role === "admin" ? (
+                                  <button
+                                    type="button"
+                                    disabled={promotingUserId === appUser.id && promotingAction === "super-admin"}
+                                    onClick={() => promoteUserToRole(appUser.email,appUser.id, "super-admin")}
+                                    className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300 disabled:opacity-60"
+                                  >
+                                    { "Make super admin"}
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={promotingUserId === appUser.id && promotingAction === "admin"}
+                                    onClick={() => promoteUserToRole(appUser.email,appUser.id, "admin")}
+                                    className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800 disabled:opacity-60"
+                                  >
+                                    {"Remove as super admin"}
+                                  </button>
+                                  
+                                )}
+                                <br/>
+                                <button
+                                    style={{"margin":"18px 0"}}
+                                    type="button"
+                                    disabled={promotingUserId === appUser.id && promotingAction === "reader"}
+                                    onClick={() => promoteUserToRole(appUser.email,appUser.id, "reader")}
+                                    className=" rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800 disabled:opacity-60"
+                                  >
+                                    { "Remove as admin"}
+                                  </button>
+                                
+                              </td>
+
+                           
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </section>
