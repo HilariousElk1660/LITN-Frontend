@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Shield, Crown, BookOpen, CheckCircle2, Circle } from "lucide-react";
@@ -204,63 +204,70 @@ function Profile() {
                 const pct = entry.percentage_completed ?? 0;
                 const isDone = entry.progress === "done";
                 return (
-                  <li
-                    key={entry.reader_book_id}
-                    className="rounded-2xl border border-border/60 bg-surface p-5"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-3">
-                        {entry.book_cover_url ? (
-                          <img
-                            src={entry.book_cover_url}
-                            alt=""
-                            className="h-14 w-10 shrink-0 rounded object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-14 w-10 shrink-0 items-center justify-center rounded bg-border/60">
-                            <BookOpen className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div>
-                          <div className="flex items-center gap-2">
-                            {isDone ? (
-                              <CheckCircle2 className="h-4 w-4 shrink-0 text-teal-bright" />
-                            ) : entry.progress === "in_progress" ? (
-                              <BookOpen className="h-4 w-4 shrink-0 text-teal-bright" />
-                            ) : (
-                              <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />
-                            )}
-                            <p className="font-medium">{entry.book_name}</p>
-                          </div>
-                          {entry.author_name && (
-                            <p className="mt-1 text-sm text-muted-foreground">{entry.author_name}</p>
+                  <li key={entry.reader_book_id}>
+                    <Link
+                      to="/read/$id"
+                      params={{ id: entry.book_id }}
+                      search={{
+                        page: entry.current_page,
+                        chapter: entry.current_chapter_index,
+                      }}
+                      className="block rounded-2xl border border-border/60 bg-surface p-5 transition hover:border-primary/60"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          {entry.book_cover_url ? (
+                            <img
+                              src={entry.book_cover_url}
+                              alt=""
+                              className="h-14 w-10 shrink-0 rounded object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-14 w-10 shrink-0 items-center justify-center rounded bg-border/60">
+                              <BookOpen className="h-4 w-4 text-muted-foreground" />
+                            </div>
                           )}
+                          <div>
+                            <div className="flex items-center gap-2">
+                              {isDone ? (
+                                <CheckCircle2 className="h-4 w-4 shrink-0 text-teal-bright" />
+                              ) : entry.progress === "in_progress" ? (
+                                <BookOpen className="h-4 w-4 shrink-0 text-teal-bright" />
+                              ) : (
+                                <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              )}
+                              <p className="font-medium">{entry.book_name}</p>
+                            </div>
+                            {entry.author_name && (
+                              <p className="mt-1 text-sm text-muted-foreground">{entry.author_name}</p>
+                            )}
+                          </div>
                         </div>
+                        <span className="whitespace-nowrap text-sm font-medium text-teal-bright">
+                          {pct}%
+                        </span>
                       </div>
-                      <span className="whitespace-nowrap text-sm font-medium text-teal-bright">
-                        {pct}%
-                      </span>
-                    </div>
 
-                    <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-border/60">
-                      <div
-                        className="h-full rounded-full bg-gradient-teal transition-all"
-                        style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
-                      />
-                    </div>
+                      <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-border/60">
+                        <div
+                          className="h-full rounded-full bg-gradient-teal transition-all"
+                          style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+                        />
+                      </div>
 
-                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span>
-                        Page {entry.current_page} of {entry.total_pages}
-                      </span>
-                      <span>
-                        Chapter {entry.current_chapter_index + 1} of {entry.total_chapters}
-                      </span>
-                      {entry.page_stopped_at && <span>Stopped at: {entry.page_stopped_at}</span>}
-                      {entry.last_opened && (
-                        <span>Last opened {new Date(entry.last_opened).toLocaleDateString()}</span>
-                      )}
-                    </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span>
+                          Page {entry.current_page} of {entry.total_pages}
+                        </span>
+                        <span>
+                          Chapter {entry.current_chapter_index + 1} of {entry.total_chapters}
+                        </span>
+                        {entry.page_stopped_at && <span>Stopped at: {entry.page_stopped_at}</span>}
+                        {entry.last_opened && (
+                          <span>Last opened {new Date(entry.last_opened).toLocaleDateString()}</span>
+                        )}
+                      </div>
+                    </Link>
                   </li>
                 );
               })}

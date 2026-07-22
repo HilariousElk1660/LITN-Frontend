@@ -1,10 +1,11 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useRouter, useCanGoBack } from "@tanstack/react-router";
 import { useEffect, useState, Suspense } from "react";
 // import { getBook, sampleChapter } from "@/lib/books";
 import logo from "@/assets/litn-logo.asset.json";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import PdfViewer from "@/components/pdf-viewer";
+import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/read/$id")({
   ssr: false,
@@ -18,6 +19,31 @@ export const Route = createFileRoute("/read/$id")({
   errorComponent: ({ reset }) => <button onClick={reset}>retry</button>,
   component: Reader,
 });
+
+function BackButton({ bookId }: { bookId: string }) {
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
+
+  const handleBack = () => {
+    if (canGoBack) {
+      router.history.back();
+    } else {
+      // No history to go back to (e.g. opened via direct link) — fall back to the book page
+      router.navigate({ to: "/book/$id", params: { id: bookId } });
+    }
+  };
+
+  return (
+    <button
+      onClick={handleBack}
+      aria-label="Back"
+      className="fixed left-4 top-4 z-50 flex items-center cursor-pointer gap-2 rounded-full bg-background/80 px-4 py-2 text-sm font-medium shadow-sm backdrop-blur transition hover:bg-background"
+    >
+      <ArrowLeft className="h-4 w-4" />
+      Back
+    </button>
+  );
+}
 
 function AccessGate({ bookId, children }: { bookId: string; children: React.ReactNode }) {
   const { user, isAdmin, loading } = useAuth();
@@ -56,7 +82,7 @@ function Reader() {
   const [book, setBook] = useState(null);
   const [pageStoppedAt, setPageStoppedAt] = useState(0);
   const { id } = Route.useParams();
-  const {chapter} = Route.useSearch()
+  const { chapter } = Route.useSearch()
   const { user, loading, backendUrl } = useAuth();
  
   const fetchBook = async (bookId: string) => {
@@ -92,6 +118,7 @@ function Reader() {
   }, [id, loading, user?.user_id, backendUrl]);
   return (
     <AccessGate bookId={"d"}>
+      <BackButton bookId={id} />
       <ReaderInner book={book} pageStoppedAt={pageStoppedAt} book_id={id} />
     </AccessGate>
   );
