@@ -15,6 +15,7 @@ import {
   X,
   Clock,
   User,
+  Crown,
   Calendar,
   Tag,
   DollarSign,
@@ -70,17 +71,22 @@ const VIEWS = [
   { key: "books", label: "Uploaded books", icon: BookOpen },
   { key: "requests", label: "Book requests", icon: FileText },
   { key: "details", label: "Admin details", icon: User },
+  { key: "super-admin", label: "Super Admin", icon: Crown },
 ] as const;
 
 type ViewKey = (typeof VIEWS)[number]["key"];
 
 function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
   const [view, setView] = useState<ViewKey>("books");
   const [requestTab, setRequestTab] = useState<RequestRow["status"]>("pending");
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [books, setBooks] = useState<AdminBook[]>([]);
+  const [users, setUsers] = useState<Array<{ id: string; email: string | null; fullname: string | null; role: "user" | "admin" | "super-admin" }>>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [promotingUserId, setPromotingUserId] = useState<string | null>(null);
+  const [promotingAction, setPromotingAction] = useState<"admin" | "super-admin" | null>(null);
   const [uploading, setUploading] = useState(false);
   const [formState, setFormState] = useState({
     bookName: "",
@@ -143,6 +149,18 @@ function AdminDashboard() {
     if (user) loadAll();
   }, [user]);
 
+  useEffect(() => {
+    if (user && isSuperAdmin && view === "super-admin") {
+      loadSuperAdminUsers();
+    }
+  }, [user, isSuperAdmin, view]);
+
+  useEffect(() => {
+    if (!isSuperAdmin && view === "super-admin") {
+      setView("details");
+    }
+  }, [isSuperAdmin, view]);
+
   const counts = useMemo(() => {
     return {
       pending: requests.filter((request) => request.status === "pending").length,
@@ -180,6 +198,75 @@ function AdminDashboard() {
       toast.error("Unable to update request status.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSuperAdminUsers = async () => {
+    if (!isSuperAdmin) return;
+    try {
+      setLoadingUsers(true);
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id,email,display_name");
+      if (profilesError) throw profilesError;
+
+      const { data: roleRows, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id,role");
+      if (rolesError) throw rolesError;
+
+      const roleMap = new Map<string, Set<string>>();
+      for (const row of roleRows ?? []) {
+        if (!roleMap.has(row.user_id)) roleMap.set(row.user_id, new Set());
+        roleMap.get(row.user_id)?.add(row.role);
+      }
+
+      setUsers(
+        (profiles ?? []).map((profile) => {
+          const roles = roleMap.get(profile.id) ?? new Set();
+          const role = roles.has("super-admin")
+            ? "super-admin"
+            : roles.has("admin")
+            ? "admin"
+            : "user";
+          return {
+            id: profile.id,
+            email: profile.email,
+            fullname: profile.display_name,
+            role,
+          };
+        }),
+      );
+    } catch (error) {
+      console.error("Failed to load super admin users", error);
+      toast.error("Unable to load users for Super Admin.");
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const promoteUserToRole = async (userId: string, role: "admin" | "super-admin") => {
+    if (!isSuperAdmin) return;
+    try {
+      setPromotingUserId(userId);
+      setPromotingAction(role);
+
+      const targetRole = "admin" as const;
+      const { error } = await supabase.from("user_roles").upsert(
+        [{ user_id: userId, role: targetRole }],
+        {
+          onConflict: ["user_id", "role"],
+        },
+      );
+      if (error) throw error;
+      toast.success(role === "super-admin" ? "User promoted to super admin." : "User promoted to admin.");
+      await loadSuperAdminUsers();
+    } catch (error) {
+      console.error("Failed to promote user", error);
+      toast.error(`Unable to promote user to ${role}.`);
+    } finally {
+      setPromotingUserId(null);
+      setPromotingAction(null);
     }
   };
 
@@ -629,13 +716,14 @@ function AdminDashboard() {
                       </p>
                     </div>
                     <div className="rounded-3xl border border-border/70 bg-background p-4 text-sm text-muted-foreground">
-                      Role: <span className="font-semibold text-foreground">Admin</span>
+                      Role: <span className="font-semibold text-foreground">{isSuperAdmin ? "Super Admin" : "Admin"}</span>
                     </div>
                   </div>
+
                   <div className="mt-8 grid gap-5 lg:grid-cols-3">
                     <div className="rounded-3xl border border-border/60 bg-background p-6">
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Name</p>
-                      <p className="mt-3 text-lg font-semibold">{user?.user_metadata?.full_name ?? user?.email ?? "Admin"}</p>
+                      <p className="mt-3 text-lg font-semibold">{user?.fullname ?? user?.email ?? "Admin"}</p>
                     </div>
                     <div className="rounded-3xl border border-border/60 bg-background p-6">
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Email</p>
@@ -643,9 +731,89 @@ function AdminDashboard() {
                     </div>
                     <div className="rounded-3xl border border-border/60 bg-background p-6">
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Role</p>
-                      <p className="mt-3 text-lg font-semibold">Admin</p>
+                      <p className="mt-3 text-lg font-semibold">{isSuperAdmin ? "Super Admin" : "Admin"}</p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {view === "super-admin" && isSuperAdmin && (
+                <div className="space-y-4 rounded-3xl border border-border/60 bg-surface p-6">
+                  <div>
+                    <h2 className="text-2xl font-semibold">Super Admin</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Promote readers to admin accounts from one place.
+                    </p>
+                  </div>
+
+                  {loadingUsers ? (
+                    <div className="rounded-3xl border border-border/60 bg-background p-8 text-center text-muted-foreground">Loading users…</div>
+                  ) : users.length === 0 ? (
+                    <div className="rounded-3xl border border-border/60 bg-background p-8 text-center text-muted-foreground">
+                      No users found.
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-3xl border border-border/60 bg-surface">
+                      <table className="w-full text-sm">
+                        <thead className="bg-background/40 text-left text-xs uppercase tracking-widest text-muted-foreground">
+                          <tr>
+                            <th className="px-5 py-3">User</th>
+                            <th className="px-5 py-3">Email</th>
+                            <th className="px-5 py-3">Role</th>
+                            <th className="px-5 py-3 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/60">
+                          {users.map((appUser) => (
+                            <tr key={appUser.id}>
+                              <td className="px-5 py-4">
+                                <div className="font-medium">{appUser.fullname ?? appUser.email ?? appUser.id}</div>
+                              </td>
+                              <td className="px-5 py-4 text-muted-foreground">{appUser.email ?? "—"}</td>
+                              <td className="px-5 py-4">
+                                <span className="rounded-full bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
+                                  {appUser.role === "super-admin" ? "Super Admin" : appUser.role === "admin" ? "Admin" : "User"}
+                                </span>
+                              </td>
+                              <td className="px-5 py-4 text-right">
+                                {appUser.role === "user" ? (
+                                  <div className="flex justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      disabled={promotingUserId === appUser.id && promotingAction === "admin"}
+                                      onClick={() => promoteUserToRole(appUser.id, "admin")}
+                                      className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-60"
+                                    >
+                                      {promotingUserId === appUser.id && promotingAction === "admin" ? "Promoting…" : "Make admin"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={promotingUserId === appUser.id && promotingAction === "super-admin"}
+                                      onClick={() => promoteUserToRole(appUser.id, "super-admin")}
+                                      className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300 disabled:opacity-60"
+                                    >
+                                      {promotingUserId === appUser.id && promotingAction === "super-admin" ? "Promoting…" : "Make super admin"}
+                                    </button>
+                                  </div>
+                                ) : appUser.role === "admin" ? (
+                                  <button
+                                    type="button"
+                                    disabled={promotingUserId === appUser.id && promotingAction === "super-admin"}
+                                    onClick={() => promoteUserToRole(appUser.id, "super-admin")}
+                                    className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300 disabled:opacity-60"
+                                  >
+                                    {promotingUserId === appUser.id && promotingAction === "super-admin" ? "Promoting…" : "Make super admin"}
+                                  </button>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">Super Admin</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </section>
