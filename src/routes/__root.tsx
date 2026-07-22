@@ -7,6 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import favicon from "@/assets/favicon.ico";
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
@@ -81,7 +82,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "LITN — Read together. Meet the authors." },
-      { name: "description", content: "Community-first reading platform with serialised chapters, book rooms, and direct access to authors." },
+      {
+        name: "description",
+        content:
+          "Community-first reading platform with serialised chapters, book rooms, and direct access to authors.",
+      },
       { property: "og:title", content: "LITN" },
       { property: "og:description", content: "Read together. Meet the authors." },
       { property: "og:type", content: "website" },
@@ -89,9 +94,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "icon", href: favicon, type: "image/x-icon" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
