@@ -93,7 +93,7 @@ export default function PdfViewer({initialPage = 5,file,book_id}) {
   // Debounced save as user scrolls/reads
   useEffect(() => {
     if (!book_id) return;
-    const base = backendUrl || "http://localhost:8000";
+    const base = backendUrl ;
     const readerId = user?.user_id
 
     const delayDebounceFn = setTimeout(() => {
@@ -109,7 +109,7 @@ export default function PdfViewer({initialPage = 5,file,book_id}) {
   useEffect(() => {
     const saveProgress = () => {
       if (!book_id) return;
-      const base = backendUrl || "http://localhost:8000";
+      const base = backendUrl ;
       const readerId = user?.id || "1dd309e3-31d0-4f53-b58a-f1d36e6a1dc4";
       const url = `${base}/save_reading_progress?reader_id=${readerId}&book_id=${book_id}&page_stopped_at=${pageNumberRef.current}`;
       navigator.sendBeacon(url);

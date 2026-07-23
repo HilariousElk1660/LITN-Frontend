@@ -25,7 +25,7 @@ export function BooksProvider({ children }: { children: ReactNode }) {
   const [bookRequests,setBookRequests]  = useState([])
   const {user, backendUrl} = useAuth()
 
-  const base = backendUrl || "http://localhost:8000";
+  const base = backendUrl ;
 
   const fetchBookRequests = async ()=> {
 

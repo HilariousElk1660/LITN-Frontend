@@ -87,7 +87,7 @@ function Reader() {
  
   const fetchBook = async (bookId: string) => {
     try {
-      const base = backendUrl || "http://localhost:8000";
+      const base = backendUrl;
       const res = await fetch(`${base}/read_book/${bookId}`);
       if (!res.ok) {
         throw new Error("Failed to fetch book " + res.statusText);

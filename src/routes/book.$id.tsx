@@ -34,15 +34,14 @@ export const Route = createFileRoute("/book/$id")({
 });
 
 function BookPage() {
-  const {isSuperAdmin} = useAuth();
+  const {isSuperAdmin, backendUrl} = useAuth();
   const [book,setBook] = useState({});
   const [access,setAccess] = useState(false)
-  const backend_url= "http://localhost:8000"
   const book_id = Route.useParams().id
   const {bookRequests} = useBooks()
 
   const fetchBook = async () => {
-    const bookData = await fetch(`${backend_url}/book/${book_id}`)
+    const bookData = await fetch(`${backendUrl}/book/${book_id}`)
     const bookJson = await bookData.json();
     console.log("BOOK",bookJson);
 

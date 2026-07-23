@@ -34,7 +34,7 @@ function Catalogue() {
       setError(null);
 
       try {
-        const base = backendUrl || "http://localhost:8000";
+        const base = backendUrl;
         const res = await fetch(`${base}/all_books`);
         if (!res.ok) {
           throw new Error(`Failed to load books: ${res.status} ${res.statusText}`);
