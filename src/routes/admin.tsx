@@ -108,6 +108,8 @@ function AdminDashboard() {
     price: "",
     bookCover: null as File | null,
     pdfFile: null as File | null,
+    currentTranslation: "english",
+    translateTo: "french",
   });
 
   
@@ -202,7 +204,8 @@ function AdminDashboard() {
         "status": status,
         "book_id": request_details["book_id"],
         "reader_id": request_details["reader_id"],
-        "reader_email":request_details['reader_email']
+        "reader_email":request_details['reader_email'],
+        "reader_name": request_details['reader_name']
       }
       const res = await fetch(`${backendUrl}/update_book_request`, {
         'method': "PUT",
@@ -339,6 +342,10 @@ function AdminDashboard() {
     formData.append("book_division_type", "full");
     formData.append("pdf_file", formState.pdfFile);
 
+    const fromLang = (supported_languages as Record<string, string>)[formState.currentTranslation] || "english";
+    formData.append("translate_from", fromLang);
+    formData.append("translate_to", formState.translateTo);
+
     try {
       setUploading(true);
       const res = await fetch(`${backendUrl}/create_book`, {
@@ -358,6 +365,8 @@ function AdminDashboard() {
         price: "",
         bookCover: null,
         pdfFile: null,
+        currentTranslation: "english",
+        translateTo: "french",
       });
       await loadBooks();
     } catch (error) {
@@ -507,39 +516,31 @@ function AdminDashboard() {
                       <label className="grid gap-2 text-sm">
                         <span>Current translation</span>
                         <select
-                            className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
+                          value={formState.currentTranslation}
+                          onChange={(event) => setFormState((prev) => ({ ...prev, currentTranslation: event.target.value }))}
+                          className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
                         >
                             {Object.entries(supported_languages).map(([key, value]) => (
-                                <option key={key} value={key}>
+                                <option key={key} value={value}>
                                     {value}
                                 </option>
                             ))}
                         </select>
-                        {/* <input
-                          value={formState.category}
-                          onChange={(event) => setFormState((prev) => ({ ...prev, category: event.target.value }))]
-                          className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
-                          placeholder="E.g. Fiction"
-                          required
-                        /> */}
                       </label>
 
                       <label className="grid gap-2 text-sm">
                         <span>Translate book to</span>
                         <select
-                            className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
-                        >
-                            <option value="french">French</option>
-                            <option value="english">English</option>
-                       
-                        </select>
-                        {/* <input
-                          value={formState.category}
-                          onChange={(event) => setFormState((prev) => ({ ...prev, category: event.target.value }))]
+                          value={formState.translateTo}
+                          onChange={(event) => setFormState((prev) => ({ ...prev, translateTo: event.target.value }))}
                           className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
-                          placeholder="E.g. Fiction"
-                          required
-                        /> */}
+                        >
+                            {Object.entries(supported_languages).map(([key, value]) => (
+                                <option key={key} value={value}>
+                                    {value}
+                                </option>
+                            ))}
+                        </select>
                       </label>
                        <label className="grid gap-2 text-sm">
                         <span>Price</span>
@@ -632,7 +633,7 @@ function AdminDashboard() {
                                   <div className="grid grid-cols-2 gap-3 text-sm text-muted-foreground sm:grid-cols-4">
                                     <div className="rounded-3xl bg-background p-3">
                                       <p className="text-xs uppercase tracking-[0.18em]">Chapters</p>
-                                      <p className="mt-2 text-base font-semibold">{book.subscription_price ? 0 : 0}</p>
+                                      <p className="mt-2 text-base font-semibold">{book.chapters}</p>
                                     </div>
                                     <div className="rounded-3xl bg-background p-3">
                                       <p className="text-xs uppercase tracking-[0.18em]">Purchases</p>

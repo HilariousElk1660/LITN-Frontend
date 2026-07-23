@@ -208,10 +208,10 @@ function Profile() {
                     <Link
                       to="/read/$id"
                       params={{ id: entry.book_id }}
-                      search={{
-                        page: entry.current_page,
-                        chapter: entry.current_chapter_index,
-                      }}
+                      // search={{
+                      //   page: entry.current_page,
+                      //   chapter: entry.current_chapter_index,
+                      // }}
                       className="block rounded-2xl border border-border/60 bg-surface p-5 transition hover:border-primary/60"
                     >
                       <div className="flex items-start justify-between gap-4">

@@ -6,6 +6,7 @@ import { getBook } from "@/lib/books";
 import { useEffect, useState } from "react";
 import { useBooks } from "@/hooks/use-books";
 import { Book } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/book/$id")({
   loader: ({ params }) => {
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/book/$id")({
 });
 
 function BookPage() {
+  const {isSuperAdmin} = useAuth();
   const [book,setBook] = useState({});
   const [access,setAccess] = useState(false)
   const backend_url= "http://localhost:8000"
@@ -48,11 +50,14 @@ function BookPage() {
 
   };
   useEffect(()=>{
-    console.log("CHECK",bookRequests)
+    if (isSuperAdmin) {
+      console.log("CHECK",isSuperAdmin)
+      return setAccess(true)
+    }
     if (!bookRequests.length) return;
     setAccess(bookRequests?.find(req => req.book_id === book_id)?.status == "paid"); 
 
-  },[bookRequests,book])
+  },[bookRequests,book,isSuperAdmin])
 
   useEffect(() => {
     fetchBook();
