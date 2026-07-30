@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import logo from "@/assets/logo1.png";
 import { useAuth } from "@/hooks/use-auth";
-import { Shield, Crown, ChevronDown, LogOut, User } from "lucide-react";
+import { Shield, Crown, ChevronDown, LogOut, User, Menu, X } from "lucide-react";
 
 export function SiteHeader() {
   const { user, isAdmin, isSuperAdmin, signOut, loading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const mobileNavRef = useRef<HTMLDivElement>(null);
 
   const initials = (user?.fullname || user?.email || "?")
     .split(" ")
@@ -18,12 +20,19 @@ export function SiteHeader() {
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (menuRef.current && !menuRef.current.contains(target)) {
         setMenuOpen(false);
+      }
+      if (mobileNavRef.current && !mobileNavRef.current.contains(target)) {
+        setMobileNavOpen(false);
       }
     }
     function handleEscape(e: KeyboardEvent) {
-      if (e.key === "Escape") setMenuOpen(false);
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setMobileNavOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleEscape);
@@ -35,9 +44,9 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+      <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link to="/" className="flex items-center gap-3">
-          <img src={logo} alt="" className="h-[90px] w-[90px] rounded-md object-contain" />
+          <img src={logo} alt="" className="h-12 w-12 rounded-md object-contain sm:h-[90px] sm:w-[90px]" />
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
@@ -54,7 +63,7 @@ export function SiteHeader() {
           )}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="relative ml-auto flex items-center gap-2" ref={mobileNavRef}>
           {loading ? null : user ? (
             <>
               {/* {isSuperAdmin ? (
@@ -138,17 +147,100 @@ export function SiteHeader() {
             <>
               <Link
                 to="/login"
-                className="hidden rounded-full px-4 py-2 text-sm text-muted-foreground transition hover:text-foreground sm:inline-flex"
+                className="hidden rounded-full px-3 py-2 text-sm text-muted-foreground transition hover:text-foreground sm:inline-flex"
               >
                 Sign in
               </Link>
               <Link
                 to="/signup"
-                className="rounded-full bg-gradient-teal px-4 py-2 text-sm font-medium text-primary-foreground shadow-glow transition hover:opacity-90"
+                className="rounded-full bg-gradient-teal px-3 py-2 text-xs font-medium text-primary-foreground shadow-glow transition hover:opacity-90 sm:px-4 sm:py-2 sm:text-sm"
               >
                 Sign up
               </Link>
             </>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setMobileNavOpen((o) => !o)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-surface/80 text-foreground transition hover:border-primary md:hidden"
+            aria-label="Toggle navigation"
+            aria-expanded={mobileNavOpen}
+          >
+            {mobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
+
+          {mobileNavOpen && (
+            <div className="absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-xl border border-border/60 bg-background/95 shadow-lg backdrop-blur-xl md:hidden">
+              <div className="border-b border-border/60 px-4 py-3">
+                <p className="text-sm font-medium text-foreground">Navigate</p>
+                <p className="text-xs text-muted-foreground">Quick links and account actions</p>
+              </div>
+              <div className="flex flex-col py-2">
+                <Link
+                  to="/"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="px-4 py-2 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                >
+                  Home
+                </Link>
+                <Link
+                  to="/catalogue"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="px-4 py-2 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                >
+                  Catalogue
+                </Link>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setMobileNavOpen(false)}
+                    className="px-4 py-2 text-sm text-teal-bright transition hover:bg-muted hover:text-foreground"
+                  >
+                    Admin
+                  </Link>
+                )}
+                {user ? (
+                  <>
+                    <Link
+                      to="/profile"
+                      onClick={() => setMobileNavOpen(false)}
+                      className="px-4 py-2 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    >
+                      Profile
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileNavOpen(false);
+                        signOut();
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 text-left text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      to="/login"
+                      onClick={() => setMobileNavOpen(false)}
+                      className="px-4 py-2 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    >
+                      Sign in
+                    </Link>
+                    <Link
+                      to="/signup"
+                      onClick={() => setMobileNavOpen(false)}
+                      className="px-4 py-2 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    >
+                      Sign up
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>

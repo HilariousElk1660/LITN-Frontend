@@ -65,7 +65,7 @@ function BookPage() {
   return (
     <div className="min-h-screen">
       <SiteHeader />
-      <div className="mx-auto max-w-6xl px-6 pt-12 pb-20">
+      <div className="mx-auto max-w-6xl px-4 pt-10 pb-16 sm:px-6 sm:pt-12 sm:pb-20">
         <div className="grid gap-12 md:grid-cols-[280px_1fr]">
           <div>
             <div className="overflow-hidden rounded-2xl shadow-glow">
@@ -88,7 +88,7 @@ function BookPage() {
           </div>
           <div>
             <div className="text-xs uppercase tracking-widest text-teal-bright">{book.category}</div>
-            <h1 className="mt-2 font-display text-5xl">{book.book_name}</h1>
+            <h1 className="mt-2 font-display text-3xl sm:text-4xl lg:text-5xl">{book.book_name}</h1>
             <div className="mt-4 flex flex-wrap gap-6 text-sm text-muted-foreground">
               <span className="font-display text-foreground">{book.currency|| "R"} {book.subscription_price}</span>
               {/* <span>★ {book.rating}</span> */}

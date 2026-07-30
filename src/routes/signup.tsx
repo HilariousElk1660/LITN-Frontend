@@ -38,8 +38,8 @@ function Signup() {
   return (
     <div className="min-h-screen">
       <SiteHeader />
-      <div className="mx-auto max-w-md px-6 py-20">
-        <h1 className="font-display text-4xl">Join LITN.</h1>
+      <div className="mx-auto max-w-md px-4 py-16 sm:px-6 sm:py-20">
+        <h1 className="font-display text-3xl sm:text-4xl">Join LITN.</h1>
         <p className="mt-2 text-muted-foreground">
           A community-first reading platform. Currently in Alpha.
         </p>

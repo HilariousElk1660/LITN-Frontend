@@ -3,8 +3,8 @@ import logo from "@/assets/litn-logo.asset.json";
 
 export function SiteFooter() {
   return (
-    <footer className="mt-32 border-t border-border/60 bg-surface/40">
-      <div className="mx-auto grid max-w-7xl gap-10 px-6 py-16 md:grid-cols-3">
+    <footer className="mt-24 border-t border-border/60 bg-surface/40 sm:mt-32">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 sm:py-16 md:grid-cols-3 md:gap-10">
         <div>
           <div className="flex items-center gap-2">
             <img src={logo.url} alt="" className="h-8 w-8 rounded-md" />
@@ -25,7 +25,7 @@ export function SiteFooter() {
         <div>
           <h4 className="text-sm font-semibold">Newsletter</h4>
           <p className="mt-3 text-sm text-muted-foreground">Monthly chapter drops in your inbox.</p>
-          <form className="mt-3 flex gap-2">
+          <form className="mt-3 flex flex-col gap-2 sm:flex-row">
             <input
               type="email"
               placeholder="you@example.com"

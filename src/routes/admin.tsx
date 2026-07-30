@@ -80,6 +80,12 @@ const VIEWS = [
 ] as const;
 
 type ViewKey = (typeof VIEWS)[number]["key"];
+type AdminUser = {
+  id: string;
+  email: string | null;
+  fullname: string | null;
+  role: "user" | "admin" | "super-admin";
+};
 
 function AdminDashboard() {
   const { user, isSuperAdmin, backendUrl } = useAuth();
@@ -88,7 +94,7 @@ function AdminDashboard() {
   const [requestTab, setRequestTab] = useState<RequestRow["status"]>("pending");
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [books, setBooks] = useState<AdminBook[]>([]);
-  const [users, setUsers] = useState<Array<{ id: string; email: string | null; fullname: string | null; role: "user" | "admin" | "super-admin" }>>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [promotingUserId, setPromotingUserId] = useState<string | null>(null);
@@ -229,20 +235,36 @@ function AdminDashboard() {
     }
   };
 
+  const normalizeUsers = (value: unknown): AdminUser[] => {
+    if (Array.isArray(value)) return value as AdminUser[];
+
+    if (value && typeof value === "object") {
+      const candidate = value as Record<string, unknown>;
+      if (Array.isArray(candidate.users)) {
+        return candidate.users as AdminUser[];
+      }
+      if (Array.isArray(candidate.data)) {
+        return candidate.data as AdminUser[];
+      }
+    }
+
+    return [];
+  };
+
   const loadSuperAdminUsers = async () => {
     if (!isSuperAdmin) return;
     try {
-      
-      const res = await fetch(`${backendUrl}/admins`,{
-        'method':'GET',
-        'headers':{'Authorization': `Bearer ${token}`}
-      })
+      const res = await fetch(`${backendUrl}/admins`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       const data = await res.json();
-      setUsers(data)
+      setUsers(normalizeUsers(data));
     } catch (error) {
       console.error("Failed to load super admin users", error);
       toast.error("Unable to load users for Super Admin.");
+      setUsers([]);
     } finally {
       setLoadingUsers(false);
     }
@@ -385,7 +407,7 @@ function AdminDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <main className="mx-auto max-w-7xl px-6 py-12">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
         <div className="space-y-8">
           <div className="rounded-4xl border border-border/60 bg-surface p-8 shadow-sm">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -399,7 +421,7 @@ function AdminDashboard() {
                   Upload new books, review subscriptions and purchase requests from readers, and keep your admin profile visible in one place.
                 </p>
               </div>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <div className="rounded-3xl border border-border/70 bg-background p-5">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Books uploaded</p>
                   <p className="mt-4 text-3xl font-semibold">{books.length}</p>
@@ -604,7 +626,7 @@ function AdminDashboard() {
                         No books uploaded yet.
                       </div>
                     ) : (
-                      <div className="grid gap-4 xl:grid-cols-1">
+                      <div className="grid gap-4 lg:grid-cols-2">
                         {books.map((book) => {
                           const stats = bookStats.get(book.book_id) ?? { totalRequests: 0, paidRequests: 0 };
                           return (
@@ -728,8 +750,8 @@ function AdminDashboard() {
                         No {requestTab} requests.
                       </div>
                     ) : (
-                      <div className="overflow-hidden rounded-3xl border border-border/60 bg-surface">
-                        <table className="w-full text-sm">
+                      <div className="overflow-x-auto rounded-3xl border border-border/60 bg-surface">
+                        <table className="w-full min-w-[720px] text-sm">
                           <thead className="bg-background/40 text-left text-xs uppercase tracking-widest text-muted-foreground">
                             <tr>
                               <th className="px-5 py-3">Book</th>
@@ -900,8 +922,8 @@ function AdminDashboard() {
                       No users found.
                     </div>
                   ) : (
-                    <div className="overflow-hidden rounded-3xl border border-border/60 bg-surface">
-                      <table className="w-full text-sm">
+                    <div className="overflow-x-auto rounded-3xl border border-border/60 bg-surface">
+                      <table className="w-full min-w-[640px] text-sm">
                         <thead className="bg-background/40 text-left text-xs uppercase tracking-widest text-muted-foreground">
                           <tr>
                             <th className="px-5 py-3">User</th>
