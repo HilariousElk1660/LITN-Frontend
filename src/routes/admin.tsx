@@ -628,8 +628,8 @@ function AdminDashboard() {
                           const stats = bookStats.get(book.book_id) ?? { totalRequests: 0, paidRequests: 0 };
                           return (
                             <article key={book.book_id} className="overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm">
-                              <div className="flex gap-4 p-5 sm:items-center">
-                                <div className="h-28 w-24 overflow-hidden rounded-3xl bg-muted">
+                              <div className="flex gap-4 p-5 sm:items-center min-w-0">
+                                <div className="h-28 w-24 overflow-hidden rounded-3xl bg-muted flex-shrink-0">
                                   {book.book_cover_url ? (
                                     <img src={book.book_cover_url} alt={book.book_name} className="h-full w-full object-cover" />
                                   ) : (
@@ -638,11 +638,11 @@ function AdminDashboard() {
                                     </div>
                                   )}
                                 </div>
-                                <div className="flex-1 space-y-2">
-                                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                    <div>
-                                      <h3 className="text-lg font-semibold">{book.book_name}</h3>
-                                      <p className="text-sm text-muted-foreground">{book.author_name}</p>
+                                <div className="flex-1 min-w-0 space-y-2">
+                                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
+                                    <div className="min-w-0">
+                                      <h3 className="text-lg font-semibold truncate">{book.book_name}</h3>
+                                      <p className="text-sm text-muted-foreground truncate">{book.author_name}</p>
                                     </div>
                                     <div className="inline-flex items-center gap-2 rounded-full bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
                                       <Tag className="h-3.5 w-3.5" />
@@ -748,8 +748,8 @@ function AdminDashboard() {
                       </div>
                     ) : (
                       <div className="rounded-3xl border border-border/60 bg-surface p-3">
-                        <div className="hidden md:block overflow-x-auto">
-                          <table className="w-full min-w-full table-fixed text-sm">
+                        <div className="hidden md:block overflow-x-auto min-w-0">
+                          <table className="w-full min-w-[700px] table-fixed text-sm">
                             <thead className="bg-background/40 text-left text-xs uppercase tracking-widest text-muted-foreground">
                               <tr>
                                 <th className="px-5 py-3">Book</th>
@@ -853,31 +853,31 @@ function AdminDashboard() {
               )}
 
               {view === "details" && (
-                <div className="rounded-3xl border border-border/60 bg-surface p-8">
-                  <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
+                <div className="rounded-3xl border border-border/60 bg-surface p-8 overflow-hidden min-w-0">
+                  <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between min-w-0">
+                    <div className="min-w-0">
                       <h2 className="text-2xl font-semibold">Admin details</h2>
                       <p className="mt-1 text-sm text-muted-foreground">
                         Your account details are shown below for quick access.
                       </p>
                     </div>
-                    <div className="rounded-3xl border border-border/70 bg-background p-4 text-sm text-muted-foreground">
+                    <div className="rounded-3xl border border-border/70 bg-background p-4 text-sm text-muted-foreground min-w-0 break-words">
                       Role: <span className="font-semibold text-foreground">{isSuperAdmin ? "Super Admin" : "Admin"}</span>
                     </div>
                   </div>
 
-                  <div className="mt-8 grid gap-5 lg:grid-cols-3">
-                    <div className="rounded-3xl border border-border/60 bg-background p-6">
+                  <div className="mt-8 grid gap-5 grid-cols-1 lg:grid-cols-3">
+                    <div className="rounded-3xl border border-border/60 bg-background p-6 min-w-0">
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Name</p>
-                      <p className="mt-3 text-lg font-semibold">{user?.fullname ?? user?.email ?? "Admin"}</p>
+                      <p className="mt-3 text-lg font-semibold break-words">{user?.fullname ?? user?.email ?? "Admin"}</p>
                     </div>
-                    <div className="rounded-3xl border border-border/60 bg-background p-6">
+                    <div className="rounded-3xl border border-border/60 bg-background p-6 min-w-0">
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Email</p>
-                      <p className="mt-3 text-lg font-semibold">{user?.email ?? "—"}</p>
+                      <p className="mt-3 text-lg font-semibold break-words">{user?.email ?? "—"}</p>
                     </div>
-                    <div className="rounded-3xl border border-border/60 bg-background p-6">
+                    <div className="rounded-3xl border border-border/60 bg-background p-6 min-w-0">
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Role</p>
-                      <p className="mt-3 text-lg font-semibold">{isSuperAdmin ? "Super Admin" : "Admin"}</p>
+                      <p className="mt-3 text-lg font-semibold break-words">{isSuperAdmin ? "Super Admin" : "Admin"}</p>
                     </div>
                   </div>
                 </div>
