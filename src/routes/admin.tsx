@@ -80,6 +80,12 @@ const VIEWS = [
 ] as const;
 
 type ViewKey = (typeof VIEWS)[number]["key"];
+type AdminUser = {
+  id: string;
+  email: string | null;
+  fullname: string | null;
+  role: "user" | "admin" | "super-admin";
+};
 
 function AdminDashboard() {
   const { user, isSuperAdmin, backendUrl } = useAuth();
@@ -88,7 +94,7 @@ function AdminDashboard() {
   const [requestTab, setRequestTab] = useState<RequestRow["status"]>("pending");
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [books, setBooks] = useState<AdminBook[]>([]);
-  const [users, setUsers] = useState<Array<{ id: string; email: string | null; fullname: string | null; role: "user" | "admin" | "super-admin" }>>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [promotingUserId, setPromotingUserId] = useState<string | null>(null);
@@ -229,26 +235,42 @@ function AdminDashboard() {
     }
   };
 
+  const normalizeUsers = (value: unknown): AdminUser[] => {
+    if (Array.isArray(value)) return value as AdminUser[];
+
+    if (value && typeof value === "object") {
+      const candidate = value as Record<string, unknown>;
+      if (Array.isArray(candidate.users)) {
+        return candidate.users as AdminUser[];
+      }
+      if (Array.isArray(candidate.data)) {
+        return candidate.data as AdminUser[];
+      }
+    }
+
+    return [];
+  };
+
   const loadSuperAdminUsers = async () => {
     if (!isSuperAdmin) return;
     try {
-      
-      const res = await fetch(`${backendUrl}/admins`,{
-        'method':'GET',
-        'headers':{'Authorization': `Bearer ${token}`}
-      })
+      const res = await fetch(`${backendUrl}/admins`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       const data = await res.json();
-      setUsers(data)
+      setUsers(normalizeUsers(data));
     } catch (error) {
       console.error("Failed to load super admin users", error);
       toast.error("Unable to load users for Super Admin.");
+      setUsers([]);
     } finally {
       setLoadingUsers(false);
     }
   };
 
-  const promoteUserToRole = async (email:string, userId: string, role: "admin" | "super-admin") => {
+  const promoteUserToRole = async (email:string, userId: string, role: "admin" | "super-admin" | "reader") => {
     if (!isSuperAdmin) return;
     try {
       setPromotingUserId(userId);
@@ -383,12 +405,12 @@ function AdminDashboard() {
   const selectedRequests = requests.filter((request) => request.status === requestTab);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen overflow-x-hidden bg-background">
       <SiteHeader />
-      <main className="mx-auto max-w-7xl px-6 py-12">
+      <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-12 min-w-0">
         <div className="space-y-8">
           <div className="rounded-4xl border border-border/60 bg-surface p-8 shadow-sm">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between min-w-0">
               <div className="max-w-2xl">
                 <div className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-3 py-1 text-sm font-semibold text-teal-700">
                   <Shield className="h-4 w-4" />
@@ -399,8 +421,8 @@ function AdminDashboard() {
                   Upload new books, review subscriptions and purchase requests from readers, and keep your admin profile visible in one place.
                 </p>
               </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-3xl border border-border/70 bg-background p-5">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 min-w-0">
+                <div className="rounded-3xl border border-border/70 bg-background p-5 min-w-0">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Books uploaded</p>
                   <p className="mt-4 text-3xl font-semibold">{books.length}</p>
                 </div>
@@ -416,30 +438,27 @@ function AdminDashboard() {
             </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
-            <aside className="space-y-3 rounded-3xl border border-border/60 bg-surface p-4">
+          <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)] min-w-0">
+            <aside className="space-y-3 rounded-3xl border border-border/60 bg-surface p-4 min-w-0">
               <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-muted-foreground">Dashboard views</h2>
               <div className="space-y-2">
-                {VIEWS.map(({ key, label, icon: Icon }) => (
-                  <>
-                  {key == "super-admin" && !isSuperAdmin ? "" :(
-                  <button
-                    key={key}
-                    type="button"
-                    className={`flex w-full items-center gap-3 rounded-3xl px-4 py-3 text-left text-sm font-medium transition ${
-                      view === key
-                        ? "border border-teal-400 bg-teal-500/10 text-foreground"
-                        : "text-muted-foreground hover:bg-surface"
-                    }`}
-                    onClick={() => setView(key)}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {label}
-                  </button>
+                {VIEWS.map(({ key, label, icon: Icon }) =>
+                  key === "super-admin" && !isSuperAdmin ? null : (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`flex w-full items-center gap-3 rounded-3xl px-4 py-3 text-left text-sm font-medium transition ${
+                        view === key
+                          ? "border border-teal-400 bg-teal-500/10 text-foreground"
+                          : "text-muted-foreground hover:bg-surface"
+                      }`}
+                      onClick={() => setView(key)}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {label}
+                    </button>
                   )
-                }
-                </>
-                    ))}
+                )}
               </div>
             </aside>
 
@@ -604,13 +623,13 @@ function AdminDashboard() {
                         No books uploaded yet.
                       </div>
                     ) : (
-                      <div className="grid gap-4 xl:grid-cols-1">
+                      <div className="grid gap-4 lg:grid-cols-2">
                         {books.map((book) => {
                           const stats = bookStats.get(book.book_id) ?? { totalRequests: 0, paidRequests: 0 };
                           return (
                             <article key={book.book_id} className="overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm">
-                              <div className="flex gap-4 p-5 sm:items-center">
-                                <div className="h-28 w-24 overflow-hidden rounded-3xl bg-muted">
+                              <div className="flex gap-4 p-5 sm:items-center min-w-0">
+                                <div className="h-28 w-24 overflow-hidden rounded-3xl bg-muted flex-shrink-0">
                                   {book.book_cover_url ? (
                                     <img src={book.book_cover_url} alt={book.book_name} className="h-full w-full object-cover" />
                                   ) : (
@@ -619,18 +638,18 @@ function AdminDashboard() {
                                     </div>
                                   )}
                                 </div>
-                                <div className="flex-1 space-y-2">
-                                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                    <div>
-                                      <h3 className="text-lg font-semibold">{book.book_name}</h3>
-                                      <p className="text-sm text-muted-foreground">{book.author_name}</p>
+                                <div className="flex-1 min-w-0 space-y-2">
+                                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
+                                    <div className="min-w-0">
+                                      <h3 className="text-lg font-semibold truncate">{book.book_name}</h3>
+                                      <p className="text-sm text-muted-foreground truncate">{book.author_name}</p>
                                     </div>
                                     <div className="inline-flex items-center gap-2 rounded-full bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
                                       <Tag className="h-3.5 w-3.5" />
                                       {book.category ?? "Uncategorized"}
                                     </div>
                                   </div>
-                                  <div className="grid grid-cols-2 gap-3 text-sm text-muted-foreground sm:grid-cols-4">
+                                  <div className="grid grid-cols-1 gap-3 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
                                     <div className="rounded-3xl bg-background p-3">
                                       <p className="text-xs uppercase tracking-[0.18em]">Chapters</p>
                                       <p className="mt-2 text-base font-semibold">{book.chapters}</p>
@@ -728,57 +747,105 @@ function AdminDashboard() {
                         No {requestTab} requests.
                       </div>
                     ) : (
-                      <div className="overflow-hidden rounded-3xl border border-border/60 bg-surface">
-                        <table className="w-full text-sm">
-                          <thead className="bg-background/40 text-left text-xs uppercase tracking-widest text-muted-foreground">
-                            <tr>
-                              <th className="px-5 py-3">Book</th>
-                              <th className="px-5 py-3">Reader</th>
-                              <th className="px-5 py-3">Amount</th>
-                              <th className="px-5 py-3">Requested</th>
-                              <th className="px-5 py-3 text-right">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border/60">
-                            {selectedRequests.map((request) => {
-                              const requestId = request.request_id ?? request.id ?? "";
-                              return (
-                                <tr key={requestId}>
-                                  <td className="px-5 py-4">
-                                    <div className="font-medium">{request.book_name}</div>
-                                    {request.note && <div className="mt-1 text-xs text-muted-foreground">{request.note}</div>}
-                                  </td>
-                                  <td className="px-5 py-4 text-muted-foreground">
-                                    <div>{request.reader_name}</div>
-                                    <div className="text-xs">{request.reader_email}</div>
-                                  </td>
-                                  <td className="px-5 py-4">
-                                    {request.book_price != null ? `${request.currency ?? "USD"} ${request.book_price}` : <span className="text-muted-foreground">Free</span>}
-                                  </td>
-                                  <td className="px-5 py-4 text-muted-foreground">{new Date(request.sent_at).toLocaleDateString()}</td>
-                                  <td className="px-5 py-4">
-                                    <div className="flex justify-end gap-2 flex-wrap">
-                                      <button
-                                        type="button"
-                                        onClick={() => updateRequestStatus(requestId,request, "paid")}
-                                        className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground"
-                                      >
-                                        Accept
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => updateRequestStatus(requestId, request,"declined")}
-                                        className="rounded-full border border-destructive/40 px-3 py-1.5 text-xs text-destructive"
-                                      >
-                                        Decline
-                                      </button>
+                      <div className="rounded-3xl border border-border/60 bg-surface p-3">
+                        <div className="hidden md:block overflow-x-auto min-w-0">
+                          <table className="w-full min-w-[700px] table-fixed text-sm">
+                            <thead className="bg-background/40 text-left text-xs uppercase tracking-widest text-muted-foreground">
+                              <tr>
+                                <th className="px-5 py-3">Book</th>
+                                <th className="px-5 py-3">Reader</th>
+                                <th className="px-5 py-3">Amount</th>
+                                <th className="px-5 py-3">Requested</th>
+                                <th className="px-5 py-3 text-right">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/60">
+                              {selectedRequests.map((request) => {
+                                const requestId = request.request_id ?? request.id ?? "";
+                                return (
+                                  <tr key={requestId}>
+                                    <td className="px-5 py-4 max-w-[200px] break-words">
+                                      <div className="font-medium">{request.book_name}</div>
+                                      {request.note && <div className="mt-1 text-xs text-muted-foreground">{request.note}</div>}
+                                    </td>
+                                    <td className="px-5 py-4 text-muted-foreground max-w-[160px] break-words">
+                                      <div>{request.reader_name}</div>
+                                      <div className="text-xs">{request.reader_email}</div>
+                                    </td>
+                                    <td className="px-5 py-4 break-words">
+                                      {request.book_price != null ? `${request.currency ?? "USD"} ${request.book_price}` : <span className="text-muted-foreground">Free</span>}
+                                    </td>
+                                    <td className="px-5 py-4 text-muted-foreground break-words">{new Date(request.sent_at).toLocaleDateString()}</td>
+                                    <td className="px-5 py-4">
+                                      <div className="flex justify-end gap-2 flex-wrap">
+                                        <button
+                                          type="button"
+                                          onClick={() => updateRequestStatus(requestId,request, "paid")}
+                                          className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground"
+                                        >
+                                          Accept
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => updateRequestStatus(requestId, request,"declined")}
+                                          className="rounded-full border border-destructive/40 px-3 py-1.5 text-xs text-destructive"
+                                        >
+                                          Decline
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div className="md:hidden space-y-3">
+                          {selectedRequests.map((request) => {
+                            const requestId = request.request_id ?? request.id ?? "";
+                            return (
+                              <div key={requestId} className="rounded-3xl border border-border/60 bg-background p-4">
+                                <div className="flex flex-col gap-3">
+                                  <div>
+                                    <p className="text-sm font-semibold">{request.book_name}</p>
+                                    {request.note && <p className="mt-1 text-xs text-muted-foreground">{request.note}</p>}
+                                  </div>
+                                  <div className="grid gap-2 text-sm text-muted-foreground">
+                                    <div>
+                                      <span className="font-medium text-foreground">Reader:</span> {request.reader_name}
                                     </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                                    <div>
+                                      <span className="font-medium text-foreground">Email:</span> {request.reader_email}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium text-foreground">Amount:</span> {request.book_price != null ? `${request.currency ?? "USD"} ${request.book_price}` : "Free"}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium text-foreground">Requested:</span> {new Date(request.sent_at).toLocaleDateString()}
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => updateRequestStatus(requestId,request, "paid")}
+                                      className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground"
+                                    >
+                                      Accept
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateRequestStatus(requestId, request,"declined")}
+                                      className="rounded-full border border-destructive/40 px-3 py-1.5 text-xs text-destructive"
+                                    >
+                                      Decline
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -786,31 +853,31 @@ function AdminDashboard() {
               )}
 
               {view === "details" && (
-                <div className="rounded-3xl border border-border/60 bg-surface p-8">
-                  <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
+                <div className="rounded-3xl border border-border/60 bg-surface p-8 overflow-hidden min-w-0">
+                  <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between min-w-0">
+                    <div className="min-w-0">
                       <h2 className="text-2xl font-semibold">Admin details</h2>
                       <p className="mt-1 text-sm text-muted-foreground">
                         Your account details are shown below for quick access.
                       </p>
                     </div>
-                    <div className="rounded-3xl border border-border/70 bg-background p-4 text-sm text-muted-foreground">
+                    <div className="rounded-3xl border border-border/70 bg-background p-4 text-sm text-muted-foreground min-w-0 break-words">
                       Role: <span className="font-semibold text-foreground">{isSuperAdmin ? "Super Admin" : "Admin"}</span>
                     </div>
                   </div>
 
-                  <div className="mt-8 grid gap-5 lg:grid-cols-3">
-                    <div className="rounded-3xl border border-border/60 bg-background p-6">
+                  <div className="mt-8 grid gap-5 grid-cols-1 lg:grid-cols-3">
+                    <div className="rounded-3xl border border-border/60 bg-background p-6 min-w-0">
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Name</p>
-                      <p className="mt-3 text-lg font-semibold">{user?.fullname ?? user?.email ?? "Admin"}</p>
+                      <p className="mt-3 text-lg font-semibold break-words">{user?.fullname ?? user?.email ?? "Admin"}</p>
                     </div>
-                    <div className="rounded-3xl border border-border/60 bg-background p-6">
+                    <div className="rounded-3xl border border-border/60 bg-background p-6 min-w-0">
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Email</p>
-                      <p className="mt-3 text-lg font-semibold">{user?.email ?? "—"}</p>
+                      <p className="mt-3 text-lg font-semibold break-words">{user?.email ?? "—"}</p>
                     </div>
-                    <div className="rounded-3xl border border-border/60 bg-background p-6">
+                    <div className="rounded-3xl border border-border/60 bg-background p-6 min-w-0">
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Role</p>
-                      <p className="mt-3 text-lg font-semibold">{isSuperAdmin ? "Super Admin" : "Admin"}</p>
+                      <p className="mt-3 text-lg font-semibold break-words">{isSuperAdmin ? "Super Admin" : "Admin"}</p>
                     </div>
                   </div>
                 </div>
@@ -900,86 +967,159 @@ function AdminDashboard() {
                       No users found.
                     </div>
                   ) : (
-                    <div className="overflow-hidden rounded-3xl border border-border/60 bg-surface">
-                      <table className="w-full text-sm">
-                        <thead className="bg-background/40 text-left text-xs uppercase tracking-widest text-muted-foreground">
-                          <tr>
-                            <th className="px-5 py-3">User</th>
-                            <th className="px-5 py-3">Email</th>
-                            <th className="px-5 py-3">Role</th>
-                            <th className="px-5 py-3 text-right">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/60">
-                          {users.map((appUser) => (
-                            <tr key={appUser.id}>
-                              <td className="px-5 py-4">
-                                <div className="font-medium">{appUser.fullname ?? appUser.email ?? appUser.id}</div>
-                              </td>
-                              <td className="px-5 py-4 text-muted-foreground">{appUser.email ?? "—"}</td>
-                              <td className="px-5 py-4">
-                                <span className="rounded-full bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
-                                  {appUser.role === "super-admin" ? "Super Admin" : appUser.role === "admin" ? "Admin" : "User"}
-                                </span>
-                              </td>
-                              <td className="px-5 py-4 text-right display-flex">
-                                {appUser.role === "user" ? (
-                                  <div className="flex justify-end gap-2">
-                                    <button
-                                      type="button"
-                                      disabled={promotingUserId === appUser.id && promotingAction === "admin"}
-                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "admin")}
-                                      className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-60"
-                                    >
-                                      {"Make admin"}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      disabled={promotingUserId === appUser.id && promotingAction === "super-admin"}
-                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "super-admin")}
-                                      className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300 disabled:opacity-60"
-                                    >
-                                      { "Make super admin"}
-                                    </button>
-                                  </div>
-                                ) : appUser.role === "admin" ? (
-                                  <button
-                                    type="button"
-                                    disabled={promotingUserId === appUser.id && promotingAction === "super-admin"}
-                                    onClick={() => promoteUserToRole(appUser.email,appUser.id, "super-admin")}
-                                    className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300 disabled:opacity-60"
-                                  >
-                                    { "Make super admin"}
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    disabled={promotingUserId === appUser.id && promotingAction === "admin"}
-                                    onClick={() => promoteUserToRole(appUser.email,appUser.id, "admin")}
-                                    className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800 disabled:opacity-60"
-                                  >
-                                    {"Remove as super admin"}
-                                  </button>
-                                  
-                                )}
-                                <br/>
-                                <button
-                                    style={{"margin":"18px 0"}}
-                                    type="button"
-                                    disabled={promotingUserId === appUser.id && promotingAction === "reader"}
-                                    onClick={() => promoteUserToRole(appUser.email,appUser.id, "reader")}
-                                    className=" rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800 disabled:opacity-60"
-                                  >
-                                    { "Remove as admin"}
-                                  </button>
-                                
-                              </td>
-
-                           
+                    <div className="rounded-3xl border border-border/60 bg-surface p-3">
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full min-w-full table-fixed text-sm">
+                          <thead className="bg-background/40 text-left text-xs uppercase tracking-widest text-muted-foreground">
+                            <tr>
+                              <th className="px-5 py-3">User</th>
+                              <th className="px-5 py-3">Email</th>
+                              <th className="px-5 py-3">Role</th>
+                              <th className="px-5 py-3 text-right">Action</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-border/60">
+                            {users.map((appUser) => (
+                              <tr key={appUser.id}>
+                                <td className="px-5 py-4">
+                                  <div className="font-medium">{appUser.fullname ?? appUser.email ?? appUser.id}</div>
+                                </td>
+                                <td className="px-5 py-4 text-muted-foreground">{appUser.email ?? "—"}</td>
+                                <td className="px-5 py-4">
+                                  <span className="rounded-full bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
+                                    {appUser.role === "super-admin" ? "Super Admin" : appUser.role === "admin" ? "Admin" : "User"}
+                                  </span>
+                                </td>
+                                <td className="px-5 py-4 text-right align-top">
+                                  <div className="flex justify-end gap-2">
+                                    {appUser.role === "user" && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          disabled={promotingUserId === appUser.id && promotingAction === "admin"}
+                                          onClick={() => promoteUserToRole(appUser.email,appUser.id, "admin")}
+                                          className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-60"
+                                        >
+                                          {"Make admin"}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={promotingUserId === appUser.id && promotingAction === "super-admin"}
+                                          onClick={() => promoteUserToRole(appUser.email,appUser.id, "super-admin")}
+                                          className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300 disabled:opacity-60"
+                                        >
+                                          { "Make super admin"}
+                                        </button>
+                                      </>
+                                    )}
+                                    {appUser.role === "admin" && (
+                                      <button
+                                        type="button"
+                                        disabled={promotingUserId === appUser.id && promotingAction === "super-admin"}
+                                        onClick={() => promoteUserToRole(appUser.email,appUser.id, "super-admin")}
+                                        className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300 disabled:opacity-60"
+                                      >
+                                        { "Make super admin"}
+                                      </button>
+                                    )}
+                                    {appUser.role === "super-admin" && (
+                                      <button
+                                        type="button"
+                                        disabled={promotingUserId === appUser.id && promotingAction === "admin"}
+                                        onClick={() => promoteUserToRole(appUser.email,appUser.id, "admin")}
+                                        className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800 disabled:opacity-60"
+                                      >
+                                        {"Remove as super admin"}
+                                      </button>
+                                    )}
+                                  </div>
+                                  {(appUser.role === "admin" || appUser.role === "super-admin") && (
+                                    <div className="mt-2 flex justify-end">
+                                      <button
+                                        type="button"
+                                        disabled={promotingUserId === appUser.id && promotingAction === "reader"}
+                                        onClick={() => promoteUserToRole(appUser.email,appUser.id, "reader")}
+                                        className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800 disabled:opacity-60"
+                                      >
+                                        { "Remove as admin"}
+                                      </button>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Mobile list */}
+                      <div className="md:hidden space-y-3">
+                        {users.map((appUser) => (
+                          <div key={appUser.id} className="rounded-xl border border-border/60 bg-background p-3">
+                            <div className="flex flex-col gap-3">
+                              <div>
+                                <div className="font-medium">{appUser.fullname ?? appUser.email ?? appUser.id}</div>
+                                <div className="text-xs text-muted-foreground">{appUser.email ?? "—"}</div>
+                                <div className="mt-2">
+                                  <span className="rounded-full bg-surface px-2 py-1 text-xs font-medium text-muted-foreground">
+                                    {appUser.role === "super-admin" ? "Super Admin" : appUser.role === "admin" ? "Admin" : "User"}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-start gap-2">
+                                {appUser.role === "user" && (
+                                  <>
+                                    <button
+                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "admin")}
+                                      className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground"
+                                    >
+                                      Make admin
+                                    </button>
+                                    <button
+                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "super-admin")}
+                                      className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300"
+                                    >
+                                      Make super admin
+                                    </button>
+                                  </>
+                                )}
+                                {appUser.role === "admin" && (
+                                  <>
+                                    <button
+                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "super-admin")}
+                                      className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300"
+                                    >
+                                      Make super admin
+                                    </button>
+                                    <button
+                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "reader")}
+                                      className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800"
+                                    >
+                                      Remove as admin
+                                    </button>
+                                  </>
+                                )}
+                                {appUser.role === "super-admin" && (
+                                  <>
+                                    <button
+                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "admin")}
+                                      className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800"
+                                    >
+                                      Remove as super admin
+                                    </button>
+                                    <button
+                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "reader")}
+                                      className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800 mt-2"
+                                    >
+                                      Remove as admin
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

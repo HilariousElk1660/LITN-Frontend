@@ -103,8 +103,8 @@ function Profile() {
     return (
       <div className="min-h-screen">
         <SiteHeader />
-        <div className="mx-auto max-w-md px-6 py-20 text-center">
-          <h1 className="font-display text-4xl">Sign in required.</h1>
+        <div className="mx-auto max-w-md px-4 py-16 text-center sm:px-6 sm:py-20">
+          <h1 className="font-display text-3xl sm:text-4xl">Sign in required.</h1>
           <p className="mt-2 text-muted-foreground">You need an account to view this page.</p>
         </div>
       </div>
@@ -114,13 +114,13 @@ function Profile() {
   return (
     <div className="min-h-screen">
       <SiteHeader />
-      <div className="mx-auto max-w-2xl px-6 py-20">
-        <div className="flex items-center gap-4">
+      <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-20">
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-teal text-lg font-semibold text-primary-foreground shadow-glow">
             {initials}
           </div>
           <div>
-            <h1 className="font-display text-4xl">Your profile.</h1>
+            <h1 className="font-display text-3xl sm:text-4xl">Your profile.</h1>
             {isSuperAdmin ? (
               <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-teal-bright/40 bg-teal/10 px-3 py-1 text-[10px] font-medium uppercase tracking-widest text-teal-bright">
                 <Crown className="h-3 w-3" /> Super Admin
@@ -214,7 +214,7 @@ function Profile() {
                       // }}
                       className="block rounded-2xl border border-border/60 bg-surface p-5 transition hover:border-primary/60"
                     >
-                      <div className="flex items-start justify-between gap-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                         <div className="flex items-start gap-3">
                           {entry.book_cover_url ? (
                             <img

@@ -34,30 +34,30 @@ function Index() {
           <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-background" />
           <div className="absolute -top-40 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-teal/15 blur-[140px]" />
         </div>
-        <div className="mx-auto max-w-4xl px-6 pt-32 pb-24 text-center md:pt-40 md:pb-32">
+        <div className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6 sm:pt-28 sm:pb-24 md:pt-40 md:pb-32">
           <span className="inline-flex items-center gap-2 rounded-full border border-teal/30 bg-teal/10 px-3 py-1 text-xs uppercase tracking-widest text-teal-bright">
             <Stethoscope className="h-3.5 w-3.5" /> Medical training library
           </span>
-          <h1 className="mt-6 font-display text-5xl leading-[1.05] md:text-7xl">
+          <h1 className="mt-6 font-display text-4xl leading-[1.05] sm:text-5xl md:text-7xl">
             Clinical books,{" "}
             <span className="text-gradient-teal">built for study.</span>
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
+          <p className="mx-auto mt-6 max-w-2xl text-base text-muted-foreground sm:text-lg">
             LITN is a curated library of medical-training titles — anatomy, pharmacology,
             emergency medicine, cardiology and clinical review — written for students,
             interns and early-career clinicians.
           </p>
 
-          <div className="mt-10 flex flex-wrap justify-center gap-3">
+          <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
             <Link
               to="/signup"
-              className="rounded-full bg-gradient-teal px-6 py-3 text-sm font-medium text-primary-foreground shadow-glow transition hover:opacity-90"
+              className="w-full rounded-full bg-gradient-teal px-6 py-3 text-sm font-medium text-primary-foreground shadow-glow transition hover:opacity-90 sm:w-auto"
             >
               Create an account
             </Link>
             <Link
               to="/login"
-              className="rounded-full border border-border bg-surface px-6 py-3 text-sm font-medium text-foreground transition hover:bg-surface/70"
+              className="w-full rounded-full border border-border bg-surface px-6 py-3 text-sm font-medium text-foreground transition hover:bg-surface/70 sm:w-auto"
             >
               Sign in to browse
             </Link>
@@ -69,8 +69,8 @@ function Index() {
       </section>
 
       {/* What is LITN */}
-      <section className="mx-auto max-w-5xl px-6 pb-24">
-        <div className="grid gap-6 md:grid-cols-3">
+      <section className="mx-auto max-w-5xl px-4 pb-20 sm:px-6 sm:pb-24">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <Feature
             icon={<BookOpen className="h-5 w-5" />}
             title="Focused, exam-ready"
