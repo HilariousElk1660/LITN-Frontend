@@ -48,7 +48,7 @@ export function PurchaseRequestButton({ bookId, adminId, bookTitle, price, curre
   if (status === "paid") {
     return (
       <div className="mt-2 w-full rounded-full border border-teal-bright/40 bg-teal/10 px-5 py-3 text-center text-sm text-teal-bright">
-        ✓ Order approved — you can read this book
+        ✓ Order approved
       </div>
     );
   }

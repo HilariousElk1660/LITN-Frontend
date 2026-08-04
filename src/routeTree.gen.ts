@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as HomeRouteImport } from './routes/home'
 import { Route as CatalogueRouteImport } from './routes/catalogue'
 import { Route as AuthorRouteImport } from './routes/author'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -32,6 +33,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatalogueRoute = CatalogueRouteImport.update({
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/author': typeof AuthorRoute
   '/catalogue': typeof CatalogueRoute
+  '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/author': typeof AuthorRoute
   '/catalogue': typeof CatalogueRoute
+  '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/author': typeof AuthorRoute
   '/catalogue': typeof CatalogueRoute
+  '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/author'
     | '/catalogue'
+    | '/home'
     | '/login'
     | '/profile'
     | '/signup'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/author'
     | '/catalogue'
+    | '/home'
     | '/login'
     | '/profile'
     | '/signup'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/author'
     | '/catalogue'
+    | '/home'
     | '/login'
     | '/profile'
     | '/signup'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuthorRoute: typeof AuthorRoute
   CatalogueRoute: typeof CatalogueRoute
+  HomeRoute: typeof HomeRoute
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
   SignupRoute: typeof SignupRoute
@@ -168,6 +181,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catalogue': {
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuthorRoute: AuthorRoute,
   CatalogueRoute: CatalogueRoute,
+  HomeRoute: HomeRoute,
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
   SignupRoute: SignupRoute,

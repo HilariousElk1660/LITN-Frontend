@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { BookOpen, ShieldCheck, Stethoscope } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -24,6 +25,8 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const {user} = useAuth()
+  if (user?.email) window.location.href = "/home"
   return (
     <div className="min-h-screen">
       <SiteHeader />
