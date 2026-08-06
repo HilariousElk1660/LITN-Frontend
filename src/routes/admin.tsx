@@ -10,26 +10,28 @@ import {
   Trash2,
   Pencil,
   Eye,
-  Users,
-  Check,
-  X,
   Clock,
   User,
   Crown,
-  Calendar,
   Tag,
-  DollarSign,
+  Check,
+  X,
+  Download,
 } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { RequireAdmin } from "@/components/require-admin";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import supported_languages from '../assets/supported_languages.json'
+import supported_languages from "../assets/supported_languages.json";
 import { api } from "@/lib/api";
-import { setDate } from "date-fns";
-import { ro } from "date-fns/locale";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -43,6 +45,7 @@ export const Route = createFileRoute("/admin")({
 
 type RequestRow = {
   request_id?: string;
+  id?: string;
   reader_id?: string;
   reader_name: string;
   reader_email: string;
@@ -51,6 +54,7 @@ type RequestRow = {
   book_price: number | null;
   currency: string;
   note: string | null;
+  decline_reason?: string | null;
   status: "pending" | "paid" | "declined";
   sent_at: string;
   reviewed_at: string | null;
@@ -64,6 +68,15 @@ type AdminBook = {
   published_date: string | null;
   book_cover_url: string | null;
   subscription_price: number | null;
+  chapters: number;
+};
+
+type BookReport = {
+  totalRequests: number;
+  acceptedRequests: number;
+  declinedRequests: number;
+  readersDone: number;
+  readersReading: number;
 };
 
 const REQUEST_TABS: Array<{ key: RequestRow["status"]; label: string; icon: typeof Clock }> = [
@@ -98,14 +111,32 @@ function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [promotingUserId, setPromotingUserId] = useState<string | null>(null);
-  const [promotingAction, setPromotingAction] = useState<"admin" | "super-admin" | null>(null);
+  const [promotingAction, setPromotingAction] = useState<"admin" | "super-admin" | "reader" | null>(null);
   const [uploading, setUploading] = useState(false);
-  
-  // State for Add Admin Modal
+
+  // Decline Modal State
+  const [declineModalOpen, setDeclineModalOpen] = useState(false);
+  const [declineTarget, setDeclineTarget] = useState<RequestRow | null>(null);
+  const [declineReason, setDeclineReason] = useState("");
+  const [declineSubmitting, setDeclineSubmitting] = useState(false);
+
+  // Accept Confirmation Modal State
+  const [acceptModalOpen, setAcceptModalOpen] = useState(false);
+  const [acceptTarget, setAcceptTarget] = useState<RequestRow | null>(null);
+  const [acceptSubmitting, setAcceptSubmitting] = useState(false);
+
+  // Report Modal State
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportBook, setReportBook] = useState<AdminBook | null>(null);
+  const [bookReport, setBookReport] = useState<BookReport | null>(null);
+
+  // Add Admin Modal State
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
   const [addAdminEmail, setAddAdminEmail] = useState("");
   const [addAdminRole, setAddAdminRole] = useState<"admin" | "super-admin">("admin");
   const [isSubmittingAddAdmin, setIsSubmittingAddAdmin] = useState(false);
+
   const [formState, setFormState] = useState({
     bookName: "",
     authorName: "",
@@ -118,14 +149,9 @@ function AdminDashboard() {
     translateTo: "french",
   });
 
-  
-  
-
-  console.log("supported_languages", supported_languages);
   const loadBooks = async () => {
     if (!user) return;
     try {
-     
       const res = await fetch(`${backendUrl}/admin_books?admin_id=${user?.user_id}`, {
         method: "GET",
       });
@@ -133,7 +159,6 @@ function AdminDashboard() {
       if (!res.ok) {
         throw new Error(data.error || "Failed to fetch uploaded books");
       }
-      console.log("books",data)
       setBooks((data ?? []) as AdminBook[]);
     } catch (error) {
       console.error("Failed to load books", error);
@@ -142,29 +167,28 @@ function AdminDashboard() {
   };
 
   const loadRequests = async () => {
-     try {
+    try {
       setLoading(true);
-      //fetching book requests
-      const res = await fetch(`${backendUrl}/book_requests?admin_id=${user?.user_id}`,{
-        'method': 'GET',
-      })
+      const res = await fetch(`${backendUrl}/book_requests?admin_id=${user?.user_id}`, {
+        method: "GET",
+      });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to fetch book requests")
+        throw new Error(data.error || "Failed to fetch book requests");
       }
       setRequests(data);
-      console.log(data)
       setLoading(false);
-    }catch(e){
-      console.error(`Error fetching book requests: ${e}`)
+    } catch (e) {
+      console.error(`Error fetching book requests: ${e}`);
       setLoading(false);
     }
   };
 
-  const loadAll = ()=>{
-    loadRequests()
-    loadBooks()
-  }
+  const loadAll = () => {
+    loadRequests();
+    loadBooks();
+  };
+
   useEffect(() => {
     if (user) loadAll();
   }, [user]);
@@ -190,42 +214,51 @@ function AdminDashboard() {
   }, [requests]);
 
   const bookStats = useMemo(() => {
-    const map = new Map<string, { totalRequests: number; paidRequests: number }>();
+    const map = new Map<string, { totalRequests: number; paidRequests: number; declinedRequests: number }>();
     for (const request of requests) {
       const bookId = request.book_id;
-      const entry = map.get(bookId) ?? { totalRequests: 0, paidRequests: 0 };
+      const entry = map.get(bookId) ?? { totalRequests: 0, paidRequests: 0, declinedRequests: 0 };
       entry.totalRequests += 1;
       if (request.status === "paid") entry.paidRequests += 1;
+      if (request.status === "declined") entry.declinedRequests += 1;
       map.set(bookId, entry);
     }
     return map;
   }, [requests]);
 
-  const updateRequestStatus = async (id: string, request_details: RequestRow, status:RequestRow["status"]) => {
+  const updateRequestStatus = async (
+    id: string,
+    request_details: RequestRow,
+    status: RequestRow["status"],
+    decline_reason?: string | null
+  ) => {
     try {
-      const token = api.getToken()
+      const token = api.getToken();
       setLoading(true);
-      const payload = {
-        "request_id": request_details['request_id'],
-        "status": status,
-        "book_id": request_details["book_id"],
-        "reader_id": request_details["reader_id"],
-        "reader_email":request_details['reader_email'],
-        "reader_name": request_details['reader_name']
+      const payload: Record<string, unknown> = {
+        request_id: request_details.request_id ?? request_details.id,
+        status,
+        book_id: request_details.book_id,
+        reader_id: request_details.reader_id,
+        reader_email: request_details.reader_email,
+        reader_name: request_details.reader_name,
+      };
+      if (decline_reason) {
+        payload.decline_reason = decline_reason;
       }
       const res = await fetch(`${backendUrl}/update_book_request`, {
-        'method': "PUT",
-        'headers': {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        'body':JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const payload = await res.json().catch(() => null);
-        throw new Error(payload?.detail || payload?.error || "Failed to update request");
+        const resData = await res.json().catch(() => null);
+        throw new Error(resData?.detail || resData?.error || "Failed to update request");
       }
-      toast.success("Request updated");
+      toast.success(`Request ${status === "paid" ? "accepted" : "declined"}`);
       await loadRequests();
     } catch (error) {
       console.error("Error updating request status", error);
@@ -235,7 +268,162 @@ function AdminDashboard() {
     }
   };
 
-  const normalizeUsers = (value: unknown): AdminUser[] => {
+  const openAcceptModal = (request: RequestRow) => {
+    setAcceptTarget(request);
+    setAcceptModalOpen(true);
+  };
+
+  const confirmAcceptRequest = async () => {
+    if (!acceptTarget) return;
+    setAcceptSubmitting(true);
+    try {
+      await updateRequestStatus(
+        acceptTarget.request_id ?? acceptTarget.id ?? "",
+        acceptTarget,
+        "paid"
+      );
+      setAcceptModalOpen(false);
+      setAcceptTarget(null);
+    } finally {
+      setAcceptSubmitting(false);
+    }
+  };
+
+  const openDeclineModal = (request: RequestRow) => {
+    setDeclineTarget(request);
+    setDeclineReason("");
+    setDeclineModalOpen(true);
+  };
+
+  const confirmDeclineRequest = async () => {
+    if (!declineTarget) return;
+    if (!declineReason.trim()) {
+      toast.error("Please enter a reason for declining this request.");
+      return;
+    }
+
+    setDeclineSubmitting(true);
+    try {
+      await updateRequestStatus(
+        declineTarget.request_id ?? declineTarget.id ?? "",
+        declineTarget,
+        "declined",
+        declineReason.trim()
+      );
+      setDeclineModalOpen(false);
+      setDeclineTarget(null);
+      setDeclineReason("");
+    } finally {
+      setDeclineSubmitting(false);
+    }
+  };
+
+  const loadBookReport = async (book: AdminBook) => {
+    setReportBook(book);
+    setReportModalOpen(true);
+    setReportLoading(true);
+    setBookReport(null);
+
+    try {
+      const token = api.getToken();
+      const res = await fetch(`${backendUrl}/admin_book_report?book_id=${book.book_id}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.detail || data?.error || "Failed to load book report");
+      }
+      setBookReport(data as BookReport);
+    } catch (error) {
+      console.error("Error fetching book report", error);
+      toast.error("Unable to fetch book report.");
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const exportReportToXLSX = () => {
+    if (!reportBook || !bookReport) return;
+
+    const bookName = reportBook.book_name || "Book";
+    const authorName = reportBook.author_name || "Unknown Author";
+
+    // Generate SpreadsheetML (XLSX compatible XML structure)
+    const xmlContent = `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:o="urn:schemas-microsoft-com:office:office"
+  xmlns:x="urn:schemas-microsoft-com:office:excel"
+  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+  <Styles>
+    <Style ss:ID="Header">
+      <Font ss:Bold="1" ss:Size="12"/>
+      <Interior ss:Color="#14B8A6" ss:Pattern="Solid"/>
+      <Font ss:Color="#FFFFFF" ss:Bold="1"/>
+    </Style>
+    <Style ss:ID="Bold">
+      <Font ss:Bold="1"/>
+    </Style>
+  </Styles>
+  <Worksheet ss:Name="Book Report">
+    <Table>
+      <Column ss:Width="200"/>
+      <Column ss:Width="120"/>
+      <Row ss:StyleID="Header">
+        <Cell><Data ss:Type="String">Metric / Detail</Data></Cell>
+        <Cell><Data ss:Type="String">Value</Data></Cell>
+      </Row>
+      <Row>
+        <Cell ss:StyleID="Bold"><Data ss:Type="String">Book Name</Data></Cell>
+        <Cell><Data ss:Type="String">${bookName.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</Data></Cell>
+      </Row>
+      <Row>
+        <Cell ss:StyleID="Bold"><Data ss:Type="String">Author</Data></Cell>
+        <Cell><Data ss:Type="String">${authorName.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</Data></Cell>
+      </Row>
+      <Row>
+        <Cell ss:StyleID="Bold"><Data ss:Type="String">Total Requests</Data></Cell>
+        <Cell><Data ss:Type="Number">${bookReport.totalRequests}</Data></Cell>
+      </Row>
+      <Row>
+        <Cell ss:StyleID="Bold"><Data ss:Type="String">Accepted Requests</Data></Cell>
+        <Cell><Data ss:Type="Number">${bookReport.acceptedRequests}</Data></Cell>
+      </Row>
+      <Row>
+        <Cell ss:StyleID="Bold"><Data ss:Type="String">Declined Requests</Data></Cell>
+        <Cell><Data ss:Type="Number">${bookReport.declinedRequests}</Data></Cell>
+      </Row>
+      <Row>
+        <Cell ss:StyleID="Bold"><Data ss:Type="String">Readers Completed</Data></Cell>
+        <Cell><Data ss:Type="Number">${bookReport.readersDone}</Data></Cell>
+      </Row>
+      <Row>
+        <Cell ss:StyleID="Bold"><Data ss:Type="String">Readers Currently Reading</Data></Cell>
+        <Cell><Data ss:Type="Number">${bookReport.readersReading}</Data></Cell>
+      </Row>
+    </Table>
+  </Worksheet>
+</Workbook>`;
+
+    const blob = new Blob([xmlContent], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const sanitizedFileName = bookName.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase();
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${sanitizedFileName}_report.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Report exported to XLSX!");
+  };
+
+  const normalizeUsers = (value: AdminUser[]): AdminUser[] => {
+    value = value.filter((v: AdminUser) => v.email !== user?.email);
     if (Array.isArray(value)) return value as AdminUser[];
 
     if (value && typeof value === "object") {
@@ -254,6 +442,7 @@ function AdminDashboard() {
   const loadSuperAdminUsers = async () => {
     if (!isSuperAdmin) return;
     try {
+      setLoadingUsers(true);
       const res = await fetch(`${backendUrl}/admins`, {
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
@@ -270,22 +459,26 @@ function AdminDashboard() {
     }
   };
 
-  const promoteUserToRole = async (email:string, userId: string, role: "admin" | "super-admin" | "reader") => {
-    if (!isSuperAdmin) return;
+  const promoteUserToRole = async (email: string | null, userId: string, role: "admin" | "super-admin" | "reader") => {
+    if (!isSuperAdmin || !email) return;
     try {
       setPromotingUserId(userId);
       setPromotingAction(role);
 
-      const res = await fetch(`${backendUrl}/change_role?email=${email}&role=${role}`,{
-        'method':'PATCH',
-        'headers':{'Authorization': `Bearer ${token}`},
-      })
+      const res = await fetch(`${backendUrl}/change_role?email=${encodeURIComponent(email)}&role=${role}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || "Failed to change role");
+      }
+      toast.success(`Role updated to ${role}.`);
       await loadSuperAdminUsers();
     } catch (error) {
       console.error("Failed to promote user", error);
-      toast.error(`Unable to promote user to ${role}.`);
+      toast.error(`Unable to update user role.`);
     } finally {
       setPromotingUserId(null);
       setPromotingAction(null);
@@ -323,7 +516,7 @@ function AdminDashboard() {
     }
   };
 
-  const handleDelete = async (bookId:string) => {
+  const handleDelete = async (bookId: string) => {
     try {
       setLoading(true);
       const res = await fetch(`${backendUrl}/delete_book/${bookId}`, {
@@ -335,20 +528,20 @@ function AdminDashboard() {
         throw new Error(payload?.detail || payload?.error || "Failed to delete book");
       }
       toast.success("Book deleted");
-      await loadRequests();
+      await loadBooks();
     } catch (error) {
       console.error("Error deleting book", error);
       toast.error("Unable to delete book.");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user) return;
 
-    if (formState.pdfFile.type !== "application/pdf") {
+    if (!formState.pdfFile || formState.pdfFile.type !== "application/pdf") {
       toast.error("Book file must be a PDF.");
       return;
     }
@@ -399,9 +592,10 @@ function AdminDashboard() {
     }
   };
 
-  const handleViewBook = (book: any) =>{
+  const handleViewBook = (book: AdminBook) => {
     window.location.href = `/read/${book.book_id}`;
-  }
+  };
+
   const selectedRequests = requests.filter((request) => request.status === requestTab);
 
   return (
@@ -416,7 +610,9 @@ function AdminDashboard() {
                   <Shield className="h-4 w-4" />
                   Admin dashboard
                 </div>
-                <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground">Manage books, requests, and admin details</h1>
+                <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground">
+                  Manage books, requests, and admin details
+                </h1>
                 <p className="mt-3 max-w-xl text-sm text-muted-foreground">
                   Upload new books, review subscriptions and purchase requests from readers, and keep your admin profile visible in one place.
                 </p>
@@ -521,17 +717,6 @@ function AdminDashboard() {
                         />
                       </label>
 
-                      {/* <label className="grid gap-2 text-sm">
-                        <span>Current Book Translation</span>
-                        <input
-                          value={formState.category}
-                          onChange={(event) => setFormState((prev) => ({ ...prev, category: event.target.value }))}
-                          className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
-                          placeholder="E.g. Fiction"
-                          required
-                        />
-                      </label> */}
-
                       <label className="grid gap-2 text-sm">
                         <span>Current translation</span>
                         <select
@@ -539,11 +724,11 @@ function AdminDashboard() {
                           onChange={(event) => setFormState((prev) => ({ ...prev, currentTranslation: event.target.value }))}
                           className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
                         >
-                            {Object.entries(supported_languages).map(([key, value]) => (
-                                <option key={key} value={value}>
-                                    {value}
-                                </option>
-                            ))}
+                          {Object.entries(supported_languages).map(([key, value]) => (
+                            <option key={key} value={value}>
+                              {value}
+                            </option>
+                          ))}
                         </select>
                       </label>
 
@@ -554,14 +739,14 @@ function AdminDashboard() {
                           onChange={(event) => setFormState((prev) => ({ ...prev, translateTo: event.target.value }))}
                           className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
                         >
-                            {Object.entries(supported_languages).map(([key, value]) => (
-                                <option key={key} value={value}>
-                                    {value}
-                                </option>
-                            ))}
+                          {Object.entries(supported_languages).map(([key, value]) => (
+                            <option key={key} value={value}>
+                              {value}
+                            </option>
+                          ))}
                         </select>
                       </label>
-                       <label className="grid gap-2 text-sm">
+                      <label className="grid gap-2 text-sm">
                         <span>Price</span>
                         <input
                           type="number"
@@ -574,16 +759,7 @@ function AdminDashboard() {
                           required
                         />
                       </label>
-                      {/* <label className="grid gap-2 text-sm md:col-span-2">
-                        <span>Upload book cover</span>
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg"
-                          onChange={(event) => setFormState((prev) => ({ ...prev, bookCover: event.target.files?.[0] ?? null }))}
-                          className="file:rounded-full file:border-0 file:bg-teal-500 file:px-4 file:py-2 file:text-sm file:text-white"
-                          required
-                        />
-                      </label> */}
+
                       <label className="grid gap-2 text-sm">
                         <span>Upload book PDF</span>
                         <input
@@ -595,7 +771,7 @@ function AdminDashboard() {
                         />
                         <span className="text-xs text-muted-foreground">Only PDF files are accepted.</span>
                       </label>
-                     
+
                       <div className="md:col-span-2 text-center">
                         <button
                           type="submit"
@@ -617,13 +793,15 @@ function AdminDashboard() {
                     </div>
 
                     {loading ? (
-                      <div className="rounded-3xl border border-border/60 bg-background p-8 text-center text-muted-foreground">Loading books…</div>
+                      <div className="rounded-3xl border border-border/60 bg-background p-8 text-center text-muted-foreground">
+                        Loading books…
+                      </div>
                     ) : books.length === 0 ? (
                       <div className="rounded-3xl border border-border/60 bg-background p-8 text-center text-muted-foreground">
                         No books uploaded yet.
                       </div>
                     ) : (
-                      <div className="grid gap-4 lg:grid-cols-2">
+                      <div className="grid gap-4 lg:grid-cols-1">
                         {books.map((book) => {
                           const stats = bookStats.get(book.book_id) ?? { totalRequests: 0, paidRequests: 0 };
                           return (
@@ -649,55 +827,54 @@ function AdminDashboard() {
                                       {book.category ?? "Uncategorized"}
                                     </div>
                                   </div>
-                                  <div className="grid grid-cols-1 gap-3 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+                                  <div className="grid grid-cols-1 gap-3 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-2">
                                     <div className="rounded-3xl bg-background p-3">
                                       <p className="text-xs uppercase tracking-[0.18em]">Chapters</p>
                                       <p className="mt-2 text-base font-semibold">{book.chapters}</p>
                                     </div>
-                                    <div className="rounded-3xl bg-background p-3">
-                                      <p className="text-xs uppercase tracking-[0.18em]">Purchases</p>
-                                      <p className="mt-2 text-base font-semibold">{stats.paidRequests}</p>
-                                    </div>
-                                    <div className="rounded-3xl bg-background p-3">
-                                      <p className="text-xs uppercase tracking-[0.18em]">Completed</p>
-                                      <p className="mt-2 text-base font-semibold">{stats.paidRequests}</p>
-                                    </div>
+                                  
                                     <div className="rounded-3xl bg-background p-3">
                                       <p className="text-xs uppercase tracking-[0.18em]">Price</p>
-                                      <p className="mt-2 text-base font-semibold">{book.subscription_price ? `${book.subscription_price}` : "—"}</p>
+                                      <p className="mt-2 text-base font-semibold">
+                                        {book.subscription_price ? `${book.subscription_price}` : "—"}
+                                      </p>
                                     </div>
                                   </div>
                                 </div>
                               </div>
                               <div className="flex flex-wrap gap-2 border-t border-border/60 bg-background/70 p-4">
                                 <button
-                                  style={{"cursor":"pointer"}}
                                   type="button"
                                   onClick={() => handleViewBook(book)}
-                                  className="inline-flex items-center gap-2 rounded-3xl border border-border px-4 py-2 text-sm text-foreground transition hover:border-teal-400"
+                                  className="inline-flex items-center gap-2 rounded-3xl border border-border px-4 py-2 text-sm text-foreground transition hover:border-teal-400 cursor-pointer"
                                 >
                                   <Eye className="h-4 w-4" />
                                   View book
                                 </button>
                                 <button
-                                  style={{"cursor":"pointer"}}
+                                  type="button"
+                                  onClick={() => loadBookReport(book)}
+                                  className="inline-flex items-center gap-2 rounded-3xl border border-border px-4 py-2 text-sm text-foreground transition hover:border-teal-400 cursor-pointer"
+                                >
+                                  <FileText className="h-4 w-4" />
+                                  Generate report
+                                </button>
+                                <button
                                   type="button"
                                   onClick={() => toast.success("Edit book flow not yet implemented.")}
-                                  className="inline-flex items-center gap-2 rounded-3xl border border-border px-4 py-2 text-sm text-foreground transition hover:border-teal-400"
+                                  className="inline-flex items-center gap-2 rounded-3xl border border-border px-4 py-2 text-sm text-foreground transition hover:border-teal-400 cursor-pointer"
                                 >
                                   <Pencil className="h-4 w-4" />
                                   Edit book
                                 </button>
                                 <button
-                                  style={{"cursor":"pointer"}}
                                   type="button"
-                                  onClick={() => {handleDelete(book.book_id)}}
-                                  className="inline-flex items-center gap-2 rounded-3xl border border-destructive/40 px-4 py-2 text-sm text-destructive transition hover:bg-destructive/10"
+                                  onClick={() => handleDelete(book.book_id)}
+                                  className="inline-flex items-center gap-2 rounded-3xl border border-destructive/40 px-4 py-2 text-sm text-destructive transition hover:bg-destructive/10 cursor-pointer"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                   Delete book
                                 </button>
-                                
                               </div>
                             </article>
                           );
@@ -741,7 +918,9 @@ function AdminDashboard() {
 
                   <div className="space-y-4">
                     {loading ? (
-                      <div className="rounded-3xl border border-border/60 bg-background p-8 text-center text-muted-foreground">Loading requests…</div>
+                      <div className="rounded-3xl border border-border/60 bg-background p-8 text-center text-muted-foreground">
+                        Loading requests…
+                      </div>
                     ) : selectedRequests.length === 0 ? (
                       <div className="rounded-3xl border border-border/60 bg-background p-8 text-center text-muted-foreground">
                         No {requestTab} requests.
@@ -756,7 +935,7 @@ function AdminDashboard() {
                                 <th className="px-5 py-3">Reader</th>
                                 <th className="px-5 py-3">Amount</th>
                                 <th className="px-5 py-3">Requested</th>
-                                <th className="px-5 py-3 text-right">Actions</th>
+                                {requestTab === "pending" && <th className="px-5 py-3 text-right">Actions</th>}
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border/60">
@@ -767,33 +946,46 @@ function AdminDashboard() {
                                     <td className="px-5 py-4 max-w-[200px] break-words">
                                       <div className="font-medium">{request.book_name}</div>
                                       {request.note && <div className="mt-1 text-xs text-muted-foreground">{request.note}</div>}
+                                      {request.decline_reason && (
+                                        <div className="mt-1 text-xs text-destructive">
+                                          Reason: {request.decline_reason}
+                                        </div>
+                                      )}
                                     </td>
                                     <td className="px-5 py-4 text-muted-foreground max-w-[160px] break-words">
                                       <div>{request.reader_name}</div>
                                       <div className="text-xs">{request.reader_email}</div>
                                     </td>
                                     <td className="px-5 py-4 break-words">
-                                      {request.book_price != null ? `${request.currency ?? "USD"} ${request.book_price}` : <span className="text-muted-foreground">Free</span>}
+                                      {request.book_price != null ? (
+                                        `${request.currency ?? "USD"} ${request.book_price}`
+                                      ) : (
+                                        <span className="text-muted-foreground">Free</span>
+                                      )}
                                     </td>
-                                    <td className="px-5 py-4 text-muted-foreground break-words">{new Date(request.sent_at).toLocaleDateString()}</td>
-                                    <td className="px-5 py-4">
-                                      <div className="flex justify-end gap-2 flex-wrap">
-                                        <button
-                                          type="button"
-                                          onClick={() => updateRequestStatus(requestId,request, "paid")}
-                                          className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground"
-                                        >
-                                          Accept
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => updateRequestStatus(requestId, request,"declined")}
-                                          className="rounded-full border border-destructive/40 px-3 py-1.5 text-xs text-destructive"
-                                        >
-                                          Decline
-                                        </button>
-                                      </div>
+                                    <td className="px-5 py-4 text-muted-foreground break-words">
+                                      {new Date(request.sent_at).toLocaleDateString()}
                                     </td>
+                                    {requestTab === "pending" && (
+                                      <td className="px-5 py-4">
+                                        <div className="flex justify-end gap-2 flex-wrap">
+                                          <button
+                                            type="button"
+                                            onClick={() => openAcceptModal(request)}
+                                            className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground cursor-pointer"
+                                          >
+                                            Accept
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => openDeclineModal(request)}
+                                            className="rounded-full border border-destructive/40 px-3 py-1.5 text-xs text-destructive cursor-pointer"
+                                          >
+                                            Decline
+                                          </button>
+                                        </div>
+                                      </td>
+                                    )}
                                   </tr>
                                 );
                               })}
@@ -810,6 +1002,9 @@ function AdminDashboard() {
                                   <div>
                                     <p className="text-sm font-semibold">{request.book_name}</p>
                                     {request.note && <p className="mt-1 text-xs text-muted-foreground">{request.note}</p>}
+                                    {request.decline_reason && (
+                                      <p className="mt-1 text-xs text-destructive">Reason: {request.decline_reason}</p>
+                                    )}
                                   </div>
                                   <div className="grid gap-2 text-sm text-muted-foreground">
                                     <div>
@@ -819,28 +1014,32 @@ function AdminDashboard() {
                                       <span className="font-medium text-foreground">Email:</span> {request.reader_email}
                                     </div>
                                     <div>
-                                      <span className="font-medium text-foreground">Amount:</span> {request.book_price != null ? `${request.currency ?? "USD"} ${request.book_price}` : "Free"}
+                                      <span className="font-medium text-foreground">Amount:</span>{" "}
+                                      {request.book_price != null ? `${request.currency ?? "USD"} ${request.book_price}` : "Free"}
                                     </div>
                                     <div>
-                                      <span className="font-medium text-foreground">Requested:</span> {new Date(request.sent_at).toLocaleDateString()}
+                                      <span className="font-medium text-foreground">Requested:</span>{" "}
+                                      {new Date(request.sent_at).toLocaleDateString()}
                                     </div>
                                   </div>
-                                  <div className="flex flex-wrap gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => updateRequestStatus(requestId,request, "paid")}
-                                      className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground"
-                                    >
-                                      Accept
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => updateRequestStatus(requestId, request,"declined")}
-                                      className="rounded-full border border-destructive/40 px-3 py-1.5 text-xs text-destructive"
-                                    >
-                                      Decline
-                                    </button>
-                                  </div>
+                                  {requestTab === "pending" && (
+                                    <div className="flex flex-wrap gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => openAcceptModal(request)}
+                                        className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground cursor-pointer"
+                                      >
+                                        Accept
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => openDeclineModal(request)}
+                                        className="rounded-full border border-destructive/40 px-3 py-1.5 text-xs text-destructive cursor-pointer"
+                                      >
+                                        Decline
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -857,9 +1056,7 @@ function AdminDashboard() {
                   <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between min-w-0">
                     <div className="min-w-0">
                       <h2 className="text-2xl font-semibold">Admin details</h2>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Your account details are shown below for quick access.
-                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">Account details for quick access.</p>
                     </div>
                     <div className="rounded-3xl border border-border/70 bg-background p-4 text-sm text-muted-foreground min-w-0 break-words">
                       Role: <span className="font-semibold text-foreground">{isSuperAdmin ? "Super Admin" : "Admin"}</span>
@@ -885,13 +1082,10 @@ function AdminDashboard() {
 
               {view === "super-admin" && isSuperAdmin && (
                 <div className="space-y-4 rounded-3xl border border-border/60 bg-surface p-6">
-                  
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <h2 className="text-2xl font-semibold">Super Admin</h2>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Promote readers to admin accounts from one place.
-                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">Promote readers to admin accounts from one place.</p>
                     </div>
                     <button
                       type="button"
@@ -903,65 +1097,10 @@ function AdminDashboard() {
                     </button>
                   </div>
 
-                  <Dialog open={isAddAdminOpen} onOpenChange={setIsAddAdminOpen}>
-                    <DialogContent className="sm:max-w-[425px]">
-                      <DialogHeader>
-                        <DialogTitle>Add User as Admin</DialogTitle>
-                        <DialogDescription>
-                          Promote a user by entering their email address and selecting their new role.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <form onSubmit={handleAddAdmin} className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <label htmlFor="email" className="text-sm font-medium text-foreground">
-                            User Email
-                          </label>
-                          <input
-                            id="email"
-                            type="email"
-                            required
-                            placeholder="user@example.com"
-                            value={addAdminEmail}
-                            onChange={(e) => setAddAdminEmail(e.target.value)}
-                            className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label htmlFor="role" className="text-sm font-medium text-foreground">
-                            Role
-                          </label>
-                          <select
-                            id="role"
-                            value={addAdminRole}
-                            onChange={(e) => setAddAdminRole(e.target.value as "admin" | "super-admin")}
-                            className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
-                          >
-                            <option value="admin">Admin</option>
-                            <option value="super-admin">Super Admin</option>
-                          </select>
-                        </div>
-                        <div className="flex justify-end gap-3 pt-4">
-                          <button
-                            type="button"
-                            onClick={() => setIsAddAdminOpen(false)}
-                            className="rounded-3xl border border-border px-4 py-2 text-sm font-semibold transition hover:bg-muted cursor-pointer bg-transparent text-foreground"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="submit"
-                            disabled={isSubmittingAddAdmin}
-                            className="rounded-3xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-60 cursor-pointer"
-                          >
-                            {isSubmittingAddAdmin ? "Updating..." : "Add Admin"}
-                          </button>
-                        </div>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-
                   {loadingUsers ? (
-                    <div className="rounded-3xl border border-border/60 bg-background p-8 text-center text-muted-foreground">Loading users…</div>
+                    <div className="rounded-3xl border border-border/60 bg-background p-8 text-center text-muted-foreground">
+                      Loading users…
+                    </div>
                   ) : users.length === 0 ? (
                     <div className="rounded-3xl border border-border/60 bg-background p-8 text-center text-muted-foreground">
                       No users found.
@@ -997,18 +1136,18 @@ function AdminDashboard() {
                                         <button
                                           type="button"
                                           disabled={promotingUserId === appUser.id && promotingAction === "admin"}
-                                          onClick={() => promoteUserToRole(appUser.email,appUser.id, "admin")}
-                                          className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-60"
+                                          onClick={() => promoteUserToRole(appUser.email, appUser.id, "admin")}
+                                          className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-60 cursor-pointer"
                                         >
-                                          {"Make admin"}
+                                          Make admin
                                         </button>
                                         <button
                                           type="button"
                                           disabled={promotingUserId === appUser.id && promotingAction === "super-admin"}
-                                          onClick={() => promoteUserToRole(appUser.email,appUser.id, "super-admin")}
-                                          className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300 disabled:opacity-60"
+                                          onClick={() => promoteUserToRole(appUser.email, appUser.id, "super-admin")}
+                                          className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300 disabled:opacity-60 cursor-pointer"
                                         >
-                                          { "Make super admin"}
+                                          Make super admin
                                         </button>
                                       </>
                                     )}
@@ -1016,20 +1155,20 @@ function AdminDashboard() {
                                       <button
                                         type="button"
                                         disabled={promotingUserId === appUser.id && promotingAction === "super-admin"}
-                                        onClick={() => promoteUserToRole(appUser.email,appUser.id, "super-admin")}
-                                        className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300 disabled:opacity-60"
+                                        onClick={() => promoteUserToRole(appUser.email, appUser.id, "super-admin")}
+                                        className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300 disabled:opacity-60 cursor-pointer"
                                       >
-                                        { "Make super admin"}
+                                        Make super admin
                                       </button>
                                     )}
                                     {appUser.role === "super-admin" && (
                                       <button
                                         type="button"
                                         disabled={promotingUserId === appUser.id && promotingAction === "admin"}
-                                        onClick={() => promoteUserToRole(appUser.email,appUser.id, "admin")}
-                                        className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800 disabled:opacity-60"
+                                        onClick={() => promoteUserToRole(appUser.email, appUser.id, "admin")}
+                                        className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800 disabled:opacity-60 cursor-pointer"
                                       >
-                                        {"Remove as super admin"}
+                                        Remove as super admin
                                       </button>
                                     )}
                                   </div>
@@ -1038,10 +1177,10 @@ function AdminDashboard() {
                                       <button
                                         type="button"
                                         disabled={promotingUserId === appUser.id && promotingAction === "reader"}
-                                        onClick={() => promoteUserToRole(appUser.email,appUser.id, "reader")}
-                                        className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800 disabled:opacity-60"
+                                        onClick={() => promoteUserToRole(appUser.email, appUser.id, "reader")}
+                                        className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800 disabled:opacity-60 cursor-pointer"
                                       >
-                                        { "Remove as admin"}
+                                        Remove as admin
                                       </button>
                                     </div>
                                   )}
@@ -1052,7 +1191,6 @@ function AdminDashboard() {
                         </table>
                       </div>
 
-                      {/* Mobile list */}
                       <div className="md:hidden space-y-3">
                         {users.map((appUser) => (
                           <div key={appUser.id} className="rounded-xl border border-border/60 bg-background p-3">
@@ -1070,14 +1208,14 @@ function AdminDashboard() {
                                 {appUser.role === "user" && (
                                   <>
                                     <button
-                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "admin")}
-                                      className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground"
+                                      onClick={() => promoteUserToRole(appUser.email, appUser.id, "admin")}
+                                      className="rounded-full bg-gradient-teal px-3 py-1.5 text-xs font-medium text-primary-foreground cursor-pointer"
                                     >
                                       Make admin
                                     </button>
                                     <button
-                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "super-admin")}
-                                      className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300"
+                                      onClick={() => promoteUserToRole(appUser.email, appUser.id, "super-admin")}
+                                      className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300 cursor-pointer"
                                     >
                                       Make super admin
                                     </button>
@@ -1086,14 +1224,14 @@ function AdminDashboard() {
                                 {appUser.role === "admin" && (
                                   <>
                                     <button
-                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "super-admin")}
-                                      className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300"
+                                      onClick={() => promoteUserToRole(appUser.email, appUser.id, "super-admin")}
+                                      className="rounded-full border border-teal-500 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-300 cursor-pointer"
                                     >
                                       Make super admin
                                     </button>
                                     <button
-                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "reader")}
-                                      className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800"
+                                      onClick={() => promoteUserToRole(appUser.email, appUser.id, "reader")}
+                                      className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800 cursor-pointer"
                                     >
                                       Remove as admin
                                     </button>
@@ -1102,14 +1240,14 @@ function AdminDashboard() {
                                 {appUser.role === "super-admin" && (
                                   <>
                                     <button
-                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "admin")}
-                                      className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800"
+                                      onClick={() => promoteUserToRole(appUser.email, appUser.id, "admin")}
+                                      className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800 cursor-pointer"
                                     >
                                       Remove as super admin
                                     </button>
                                     <button
-                                      onClick={() => promoteUserToRole(appUser.email,appUser.id, "reader")}
-                                      className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800 mt-2"
+                                      onClick={() => promoteUserToRole(appUser.email, appUser.id, "reader")}
+                                      className="rounded-full border border-red-500 px-3 py-1.5 text-xs font-medium text-red-800 mt-2 cursor-pointer"
                                     >
                                       Remove as admin
                                     </button>
@@ -1128,6 +1266,192 @@ function AdminDashboard() {
           </div>
         </div>
       </main>
+
+      {/* Accept Prompt Modal */}
+      <Dialog open={acceptModalOpen} onOpenChange={setAcceptModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Accept Request</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to accept this book request from {acceptTarget?.reader_name}?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <button
+              type="button"
+              onClick={() => setAcceptModalOpen(false)}
+              className="rounded-3xl border border-border px-4 py-2 text-sm font-semibold transition hover:bg-muted cursor-pointer bg-transparent text-foreground"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={acceptSubmitting}
+              onClick={confirmAcceptRequest}
+              className="rounded-3xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-60 cursor-pointer"
+            >
+              {acceptSubmitting ? "Accepting..." : "Yes, Accept"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Decline Reason Modal */}
+      <Dialog open={declineModalOpen} onOpenChange={setDeclineModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Decline Request</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to decline?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 space-y-2">
+            <label htmlFor="declineReason" className="text-sm font-medium text-foreground">
+              Reason for decline
+            </label>
+            <textarea
+              id="declineReason"
+              rows={4}
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+              placeholder="Enter reason for declining..."
+              className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400 resize-none"
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <button
+              type="button"
+              onClick={() => setDeclineModalOpen(false)}
+              className="rounded-3xl border border-border px-4 py-2 text-sm font-semibold transition hover:bg-muted cursor-pointer bg-transparent text-foreground"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={declineSubmitting}
+              onClick={confirmDeclineRequest}
+              className="rounded-3xl bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground transition hover:opacity-90 disabled:opacity-60 cursor-pointer"
+            >
+              {declineSubmitting ? "Declining..." : "Decline Request"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Book Report Modal */}
+      <Dialog open={reportModalOpen} onOpenChange={setReportModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Book Report</DialogTitle>
+            <DialogDescription>
+              Analytics and reader performance statistics for <span className="font-semibold text-foreground">{reportBook?.book_name}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          {reportLoading ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">Loading report statistics…</div>
+          ) : (
+            <div className="grid gap-3 py-4 text-sm">
+              <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background p-4">
+                <span className="text-muted-foreground">Number of book requests</span>
+                <span className="font-semibold text-foreground">{bookReport?.totalRequests ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background p-4">
+                <span className="text-muted-foreground">Number of book requests accepted</span>
+                <span className="font-semibold text-teal-600">{bookReport?.acceptedRequests ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background p-4">
+                <span className="text-muted-foreground">Number of book requests declined</span>
+                <span className="font-semibold text-destructive">{bookReport?.declinedRequests ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background p-4">
+                <span className="text-muted-foreground">Number of readers done with book</span>
+                <span className="font-semibold text-foreground">{bookReport?.readersDone ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background p-4">
+                <span className="text-muted-foreground">Number of readers currently reading</span>
+                <span className="font-semibold text-foreground">{bookReport?.readersReading ?? 0}</span>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <button
+              type="button"
+              disabled={reportLoading || !bookReport}
+              onClick={exportReportToXLSX}
+              className="inline-flex items-center gap-2 rounded-3xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-60 cursor-pointer"
+            >
+              <Download className="h-4 w-4" />
+              Export to XLSX
+            </button>
+            <button
+              type="button"
+              onClick={() => setReportModalOpen(false)}
+              className="rounded-3xl border border-border px-4 py-2 text-sm font-semibold transition hover:bg-muted cursor-pointer bg-transparent text-foreground"
+            >
+              Close
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Admin User Modal */}
+      <Dialog open={isAddAdminOpen} onOpenChange={setIsAddAdminOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add User as Admin</DialogTitle>
+            <DialogDescription>
+              Promote a user by entering their email address and selecting their new role.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAddAdmin} className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium text-foreground">
+                User Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                placeholder="user@example.com"
+                value={addAdminEmail}
+                onChange={(e) => setAddAdminEmail(e.target.value)}
+                className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="role" className="text-sm font-medium text-foreground">
+                Role
+              </label>
+              <select
+                id="role"
+                value={addAdminRole}
+                onChange={(e) => setAddAdminRole(e.target.value as "admin" | "super-admin")}
+                className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-teal-400"
+              >
+                <option value="admin">Admin</option>
+                <option value="super-admin">Super Admin</option>
+              </select>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => setIsAddAdminOpen(false)}
+                className="rounded-3xl border border-border px-4 py-2 text-sm font-semibold transition hover:bg-muted cursor-pointer bg-transparent text-foreground"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmittingAddAdmin}
+                className="rounded-3xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-60 cursor-pointer"
+              >
+                {isSubmittingAddAdmin ? "Updating..." : "Add Admin"}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <SiteFooter />
     </div>
   );
