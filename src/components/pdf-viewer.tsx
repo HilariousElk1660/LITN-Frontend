@@ -7,10 +7,11 @@ import { useAuth } from '@/hooks/use-auth';
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function PdfViewer({initialPage = 5,file,book_id}) {
+  const isMobile = window.matchMedia("(max-width: 768px)").matches;
   const { user, backendUrl } = useAuth();
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(initialPage);
-  const [scale, setScale] = useState(2.8);
+  const [scale, setScale] = useState(isMobile?0.8:2.8);
   const [rotation, setRotation] = useState(0);
 
   const containerRef = useRef(null);
@@ -128,7 +129,7 @@ export default function PdfViewer({initialPage = 5,file,book_id}) {
   return (
     <div className="flex flex-col items-center gap-3 p-4">
       {/* Toolbar */}
-      <div className="sticky top-2 z-10 flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 shadow-sm">
+      <div className={`sticky ${isMobile ? 'mt-10' : 'mt-2'} top-2 z-10 flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 shadow-sm`}>
         <button
           onClick={goToPrevPage}
           disabled={pageNumber <= 1}

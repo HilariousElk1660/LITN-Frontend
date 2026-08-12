@@ -137,8 +137,8 @@ function ReaderInner({ book, pageStoppedAt, book_id }: { book: any; pageStoppedA
   }
 
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading PDF…</div>}>
-      {!pageStoppedAt? <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading PDF…</div>: (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading book…</div>}>
+      {!pageStoppedAt? <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading book…</div>: (
         <PdfViewer
           initialPage={pageStoppedAt}
           file={book?.pdf_file_url[user?.prefferedLanguage || 'english']} 

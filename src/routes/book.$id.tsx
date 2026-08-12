@@ -65,7 +65,8 @@ function BookPage() {
   return (
     <div className="min-h-screen">
       <SiteHeader />
-      <div className="mx-auto max-w-6xl px-4 pt-10 pb-16 sm:px-6 sm:pt-12 sm:pb-20">
+
+     { !book.book_name ? <div style={{ height: '80vh' }} className="mt-16 text-center text-muted-foreground">Loading book details …</div> : <div className="mx-auto max-w-6xl px-4 pt-10 pb-16 sm:px-6 sm:pt-12 sm:pb-20">
         <div className="grid gap-12 md:grid-cols-[280px_1fr]">
           <div>
             <div className="overflow-hidden rounded-2xl shadow-glow">
@@ -117,7 +118,7 @@ function BookPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
       <SiteFooter />
     </div>
   );
