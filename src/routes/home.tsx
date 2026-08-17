@@ -44,7 +44,7 @@ function Home() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loadingBooks, setLoadingBooks] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+ console.log("YOUR BOOKS", readersBooks)
   useEffect(() => {
     const fetchBooks = async () => {
       setLoadingBooks(true);
@@ -205,8 +205,8 @@ function Home() {
                   Browse library <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
-            ) : (
-              ((readersBooks as LibraryEntry[]) ?? []).slice(0, 5).map((b) => {
+            ) : readersBooks.length ? (
+              ((readersBooks as LibraryEntry[])).slice(0, 5).map((b) => {
                 const pct = b.percentage_completed ?? 0;
                 return (
                   <Link
@@ -257,7 +257,7 @@ function Home() {
                   </Link>
                 );
               })
-            )}
+            ):<p>e</p>}
           </div>
         </section>
 

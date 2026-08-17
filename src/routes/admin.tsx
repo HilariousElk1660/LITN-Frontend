@@ -17,6 +17,7 @@ import {
   Check,
   X,
   Download,
+  ChevronDown,
 } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -71,12 +72,22 @@ type AdminBook = {
   chapters: number;
 };
 
+type ReaderDetail = {
+  name: string;
+  email: string;
+};
+
 type BookReport = {
   totalRequests: number;
   acceptedRequests: number;
   declinedRequests: number;
   readersDone: number;
   readersReading: number;
+  pendingList?: ReaderDetail[];
+  acceptedList?: ReaderDetail[];
+  declinedList?: ReaderDetail[];
+  completedList?: ReaderDetail[];
+  inProgressList?: ReaderDetail[];
 };
 
 const REQUEST_TABS: Array<{ key: RequestRow["status"]; label: string; icon: typeof Clock }> = [
@@ -130,6 +141,14 @@ function AdminDashboard() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportBook, setReportBook] = useState<AdminBook | null>(null);
   const [bookReport, setBookReport] = useState<BookReport | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
+  const toggleCategory = (key: string) => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
 
   // Add Admin Modal State
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
@@ -323,6 +342,7 @@ function AdminDashboard() {
     setReportModalOpen(true);
     setReportLoading(true);
     setBookReport(null);
+    setExpandedCategories({});
 
     try {
       const token = api.getToken();
@@ -351,8 +371,66 @@ function AdminDashboard() {
     const bookName = reportBook.book_name || "Book";
     const authorName = reportBook.author_name || "Unknown Author";
 
+    const escapeXml = (str: string) => {
+      if (!str) return "";
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+    };
+
+    let readerRowsHtml = "";
+    const appendReaders = (list: ReaderDetail[] | undefined, statusName: string) => {
+      if (!list || list.length === 0) return;
+      list.forEach(r => {
+        readerRowsHtml += `
+      <Row>
+        <Cell><Data ss:Type="String">${escapeXml(r.name)}</Data></Cell>
+        <Cell><Data ss:Type="String">${escapeXml(r.email)}</Data></Cell>
+        <Cell><Data ss:Type="String">${statusName}</Data></Cell>
+      </Row>`;
+      });
+    };
+
+    appendReaders(bookReport.pendingList, "Pending Request");
+    appendReaders(bookReport.acceptedList, "Request Accepted");
+    appendReaders(bookReport.declinedList, "Request Declined");
+    appendReaders(bookReport.completedList, "Completed Reading");
+    appendReaders(bookReport.inProgressList, "Currently Reading");
+
+    // Define the categories matching the UI
+const categories = [
+  { key: "pending", label: "Pending Requests", list: bookReport?.pendingList ?? [] },
+  { key: "accepted", label: "Accepted Requests", list: bookReport?.acceptedList ?? [] },
+  { key: "declined", label: "Declined Requests", list: bookReport?.declinedList ?? [] },
+  { key: "completed", label: "Readers Completed", list: bookReport?.completedList ?? [] },
+  { key: "inProgress", label: "Readers Currently Reading", list: bookReport?.inProgressList ?? [] },
+];
+
+// Determine max rows needed to align cells across columns
+const maxRows = Math.max(...categories.map((cat) => cat.list.length), 0);
+const grandTotal = categories.reduce((acc, cat) => acc + cat.list.length, 0);
+
+// Generate Reader Matrix Rows
+const readerMatrixRowsXml = Array.from({ length: maxRows })
+  .map((_, rowIndex) => {
+    const cellsXml = categories
+      .map((cat) => {
+        const reader = cat.list[rowIndex];
+        if (reader) {
+          const displayText = reader.name ? `${reader.name} (${reader.email})` : reader.email;
+          return `<Cell><Data ss:Type="String">${escapeXml(displayText)}</Data></Cell>`;
+        }
+        return `<Cell><Data ss:Type="String">—</Data></Cell>`;
+      })
+      .join("");
+    return `<Row>${cellsXml}</Row>`;
+  })
+  .join("\n      ");
     // Generate SpreadsheetML (XLSX compatible XML structure)
-    const xmlContent = `<?xml version="1.0"?>
+const xmlContent = `<?xml version="1.0"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
   xmlns:o="urn:schemas-microsoft-com:office:office"
@@ -360,49 +438,68 @@ function AdminDashboard() {
   xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
   <Styles>
     <Style ss:ID="Header">
-      <Font ss:Bold="1" ss:Size="12"/>
+      <Font ss:Bold="1" ss:Size="11" ss:Color="#FFFFFF"/>
       <Interior ss:Color="#14B8A6" ss:Pattern="Solid"/>
-      <Font ss:Color="#FFFFFF" ss:Bold="1"/>
+      <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+    </Style>
+    <Style ss:ID="Subheader">
+      <Font ss:Bold="1" ss:Size="10" ss:Color="#1F2937"/>
+      <Interior ss:Color="#F3F4F6" ss:Pattern="Solid"/>
+      <Alignment ss:Horizontal="Center"/>
     </Style>
     <Style ss:ID="Bold">
       <Font ss:Bold="1"/>
     </Style>
+    <Style ss:ID="GrandTotal">
+      <Font ss:Bold="1" ss:Size="11" ss:Color="#FFFFFF"/>
+      <Interior ss:Color="#0F766E" ss:Pattern="Solid"/>
+      <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+    </Style>
   </Styles>
+
   <Worksheet ss:Name="Book Report">
     <Table>
-      <Column ss:Width="200"/>
-      <Column ss:Width="120"/>
+      <!-- Set column widths for 5 category columns -->
+      <Column ss:Width="220"/>
+      <Column ss:Width="220"/>
+      <Column ss:Width="220"/>
+      <Column ss:Width="220"/>
+      <Column ss:Width="220"/>
+
+      <!-- Book Summary Header -->
       <Row ss:StyleID="Header">
-        <Cell><Data ss:Type="String">Metric / Detail</Data></Cell>
-        <Cell><Data ss:Type="String">Value</Data></Cell>
+        <Cell ss:MergeAcross="4"><Data ss:Type="String">BOOK REPORT SUMMARY</Data></Cell>
       </Row>
       <Row>
-        <Cell ss:StyleID="Bold"><Data ss:Type="String">Book Name</Data></Cell>
-        <Cell><Data ss:Type="String">${bookName.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</Data></Cell>
+        <Cell ss:StyleID="Bold"><Data ss:Type="String">Book Name:</Data></Cell>
+        <Cell ss:MergeAcross="3"><Data ss:Type="String">${escapeXml(bookName)}</Data></Cell>
       </Row>
       <Row>
-        <Cell ss:StyleID="Bold"><Data ss:Type="String">Author</Data></Cell>
-        <Cell><Data ss:Type="String">${authorName.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</Data></Cell>
+        <Cell ss:StyleID="Bold"><Data ss:Type="String">Author:</Data></Cell>
+        <Cell ss:MergeAcross="3"><Data ss:Type="String">${escapeXml(authorName)}</Data></Cell>
       </Row>
-      <Row>
-        <Cell ss:StyleID="Bold"><Data ss:Type="String">Total Requests</Data></Cell>
-        <Cell><Data ss:Type="Number">${bookReport.totalRequests}</Data></Cell>
+      <Row></Row>
+
+      <!-- Category Column Headings -->
+      <Row ss:StyleID="Header">
+        ${categories.map((cat) => `<Cell><Data ss:Type="String">${escapeXml(cat.label)}</Data></Cell>`).join("")}
       </Row>
+
+      <!-- Category Reader Emails / Names Rows -->
+      ${maxRows > 0 ? readerMatrixRowsXml : `
       <Row>
-        <Cell ss:StyleID="Bold"><Data ss:Type="String">Accepted Requests</Data></Cell>
-        <Cell><Data ss:Type="Number">${bookReport.acceptedRequests}</Data></Cell>
+        <Cell ss:MergeAcross="4"><Data ss:Type="String">No readers in any category.</Data></Cell>
+      </Row>`}
+
+      <!-- Subtotal Per Category Row -->
+      <Row ss:StyleID="Subheader">
+        ${categories.map((cat) => `<Cell><Data ss:Type="String">Total: ${cat.list.length}</Data></Cell>`).join("")}
       </Row>
-      <Row>
-        <Cell ss:StyleID="Bold"><Data ss:Type="String">Declined Requests</Data></Cell>
-        <Cell><Data ss:Type="Number">${bookReport.declinedRequests}</Data></Cell>
-      </Row>
-      <Row>
-        <Cell ss:StyleID="Bold"><Data ss:Type="String">Readers Completed</Data></Cell>
-        <Cell><Data ss:Type="Number">${bookReport.readersDone}</Data></Cell>
-      </Row>
-      <Row>
-        <Cell ss:StyleID="Bold"><Data ss:Type="String">Readers Currently Reading</Data></Cell>
-        <Cell><Data ss:Type="Number">${bookReport.readersReading}</Data></Cell>
+
+      <!-- Grand Total Row -->
+      <Row ss:StyleID="GrandTotal">
+        <Cell ss:MergeAcross="3"><Data ss:Type="String">Grand Total Readers:</Data></Cell>
+        <Cell><Data ss:Type="Number">${grandTotal}</Data></Cell>
       </Row>
     </Table>
   </Worksheet>
@@ -597,6 +694,102 @@ function AdminDashboard() {
   };
 
   const selectedRequests = requests.filter((request) => request.status === requestTab);
+  const isMobileView = window.matchMedia("(max-width: 768px)").matches;
+  const TableForm = () => {
+  const categories = [
+    {
+      key: "pending",
+      label: "Pending Requests",
+      list: bookReport?.pendingList ?? [],
+      colorClass: "text-teal-600 bg-teal-500/10",
+    },
+    {
+      key: "accepted",
+      label: "Accepted Requests",
+      list: bookReport?.acceptedList ?? [],
+      colorClass: "text-teal-600 bg-teal-500/10",
+    },
+    {
+      key: "declined",
+      label: "Declined Requests",
+      list: bookReport?.declinedList ?? [],
+      colorClass: "text-destructive bg-destructive/10",
+    },
+    {
+      key: "completed",
+      label: "Readers Completed",
+      list: bookReport?.completedList ?? [],
+     colorClass: "text-teal-600 bg-teal-500/10",
+    },
+    {
+      key: "inProgress",
+      label: "Readers Currently Reading",
+      list: bookReport?.inProgressList ?? [],
+      colorClass: "text-teal-600 bg-teal-500/10",
+    },
+  ];
+
+  // Calculate the maximum number of items across all category lists to align rows
+  const maxRows = Math.max(...categories.map((c) => c.list.length), 0);
+
+  // Calculate total across all categories
+  const grandTotal = categories.reduce((acc, cat) => acc + cat.list.length, 0);
+
+  return (
+    <div className="w-full overflow-x-auto rounded-xl border border-border/60 bg-background/50 backdrop-blur-sm p-2 text-sm">
+      <table className="w-full border-collapse text-left">
+        {/* Table Headings */}
+        <thead>
+          <tr className="border-b border-border/60 bg-muted/20">
+            {categories.map((cat) => (
+              <th key={cat.key} className="p-3 font-semibold text-foreground min-w-[180px]">
+                <div className="flex items-center justify-between gap-2">
+                  <span>{cat.label}</span>
+                  <span className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold ${cat.colorClass}`}>
+                    {cat.list.length}
+                  </span>
+                </div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+
+        {/* Email Rows */}
+        <tbody className="divide-y divide-border/20">
+          {maxRows === 0 ? (
+            <tr>
+              <td colSpan={categories.length} className="p-6 text-center text-xs text-muted-foreground">
+                No data available across any category.
+              </td>
+            </tr>
+          ) : (
+            Array.from({ length: maxRows }).map((_, rowIndex) => (
+              <tr key={rowIndex} className="hover:bg-muted/10 transition-colors">
+                {categories.map((cat) => {
+                  const reader = cat.list[rowIndex];
+                  return (
+                    <td key={cat.key} className="p-3 align-top text-xs">
+                      {reader ? (
+                        <div className="flex flex-col truncate" title={`${reader.name} (${reader.email})`}>
+                          <span className="font-medium text-foreground truncate">{reader.name}</span>
+                          <span className="text-muted-foreground truncate">{reader.email}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground/30">—</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))
+          )}
+        </tbody>
+
+     
+      </table>
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">
@@ -1340,7 +1533,7 @@ function AdminDashboard() {
 
       {/* Book Report Modal */}
       <Dialog open={reportModalOpen} onOpenChange={setReportModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[1200px]">
           <DialogHeader>
             <DialogTitle>Book Report</DialogTitle>
             <DialogDescription>
@@ -1349,28 +1542,101 @@ function AdminDashboard() {
           </DialogHeader>
           {reportLoading ? (
             <div className="py-8 text-center text-sm text-muted-foreground">Loading report statistics…</div>
-          ) : (
-            <div className="grid gap-3 py-4 text-sm">
-              <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background p-4">
-                <span className="text-muted-foreground">Number of book requests</span>
-                <span className="font-semibold text-foreground">{bookReport?.totalRequests ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background p-4">
-                <span className="text-muted-foreground">Number of book requests accepted</span>
-                <span className="font-semibold text-teal-600">{bookReport?.acceptedRequests ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background p-4">
-                <span className="text-muted-foreground">Number of book requests declined</span>
-                <span className="font-semibold text-destructive">{bookReport?.declinedRequests ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background p-4">
-                <span className="text-muted-foreground">Number of readers done with book</span>
-                <span className="font-semibold text-foreground">{bookReport?.readersDone ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background p-4">
-                <span className="text-muted-foreground">Number of readers currently reading</span>
-                <span className="font-semibold text-foreground">{bookReport?.readersReading ?? 0}</span>
-              </div>
+          ) : !isMobileView? 
+            <TableForm/>:(
+            <div className="grid gap-3 py-4 text-sm max-h-[60vh] overflow-y-auto pr-1">
+              {[
+                {
+                  key: "pending",
+                  label: "Pending Requests",
+                  count: bookReport?.pendingList?.length ?? 0,
+                  list: bookReport?.pendingList,
+                  colorClass: "text-teal-600 bg-teal-500/10",
+                },
+                {
+                  key: "accepted",
+                  label: "Accepted Requests",
+                  count: bookReport?.acceptedList?.length ?? 0,
+                  list: bookReport?.acceptedList,
+                  colorClass: "text-teal-600 bg-teal-500/10",
+                },
+                {
+                  key: "declined",
+                  label: "Declined Requests",
+                  count: bookReport?.declinedList?.length ?? 0,
+                  list: bookReport?.declinedList,
+                  colorClass: "text-destructive bg-destructive/10",
+                },
+                {
+                  key: "completed",
+                  label: "Readers Completed",
+                  count: bookReport?.completedList?.length ?? 0,
+                  list: bookReport?.completedList,
+                  colorClass: "text-teal-600 bg-teal-500/10",
+                },
+                {
+                  key: "inProgress",
+                  label: "Readers Currently Reading",
+                  count: bookReport?.inProgressList?.length ?? 0,
+                  list: bookReport?.inProgressList,
+                  colorClass: "text-teal-600 bg-teal-500/10",
+                },
+              ].map((category) => {
+                const isExpanded = !!expandedCategories[category.key];
+                return (
+                  <div key={category.key} className="rounded-2xl border border-border/60 bg-background/50 backdrop-blur-sm overflow-hidden transition-all duration-200">
+                    <button
+                      type="button"
+                      onClick={() => toggleCategory(category.key)}
+                      className="flex w-full items-center justify-between p-4 text-left font-medium hover:bg-muted/40 transition cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-foreground">{category.label}</span>
+                        <span className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${category.colorClass}`}>
+                          {category.count}
+                        </span>
+                      </div>
+                      <ChevronDown
+                        className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                          isExpanded ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                    {isExpanded && (
+                      <div className="border-t border-border/40 bg-muted/10 p-4 transition-all duration-300">
+                        {!category.list || category.list.length === 0 ? (
+                          <div className="text-xs text-muted-foreground py-2 text-center">No readers in this category.</div>
+                        ) : (
+                          <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                            {category.list.map((reader, idx) => {
+                              const getInitials = (n: string) => {
+                                if (!n) return "?";
+                                return n
+                                  .split(" ")
+                                  .map((p) => p[0])
+                                  .join("")
+                                  .toUpperCase()
+                                  .slice(0, 2);
+                              };
+                              return (
+                                <div key={idx} className="flex items-center gap-3 py-1 first:pt-0 last:pb-0 border-b border-border/10 last:border-0">
+                                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-500/10 text-teal-600 font-semibold text-xs">
+                                    {getInitials(reader.name)}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-medium text-foreground truncate text-sm">{reader.name}</div>
+                                    <div className="text-xs text-muted-foreground truncate">{reader.email}</div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
           <DialogFooter className="gap-2 sm:gap-0">
