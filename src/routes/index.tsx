@@ -3,6 +3,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { BookOpen, ShieldCheck, Stethoscope } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { Home } from "./home";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,8 +27,11 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const {user} = useAuth()
-  if (user?.email) window.location.href = "/home"
   return (
+    <>
+    {user?
+    <Home/>
+    :
     <div className="min-h-screen">
       <SiteHeader />
 
@@ -93,7 +97,8 @@ function Index() {
       </section>
 
       <SiteFooter />
-    </div>
+    </div>}
+    </>
   );
 }
 

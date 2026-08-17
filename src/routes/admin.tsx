@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   Shield,
   BookOpen,
+  Book,
   FileText,
   ImagePlus,
   Upload,
@@ -33,6 +34,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useBooks } from "@/hooks/use-books";
+import { BookList } from "@/components/all-books-super-admin";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -97,7 +100,8 @@ const REQUEST_TABS: Array<{ key: RequestRow["status"]; label: string; icon: type
 ];
 
 const VIEWS = [
-  { key: "books", label: "Uploaded books", icon: BookOpen },
+  { key: "all-books", label: "All uploaded books", icon: Book },
+  { key: "books", label: "My uploaded books", icon: BookOpen },
   { key: "requests", label: "Book requests", icon: FileText },
   { key: "details", label: "Admin details", icon: User },
   { key: "super-admin", label: "Super Admin", icon: Crown },
@@ -124,6 +128,7 @@ function AdminDashboard() {
   const [promotingUserId, setPromotingUserId] = useState<string | null>(null);
   const [promotingAction, setPromotingAction] = useState<"admin" | "super-admin" | "reader" | null>(null);
   const [uploading, setUploading] = useState(false);
+  const {allBooks, fetchAllBooks} = useBooks();
 
   // Decline Modal State
   const [declineModalOpen, setDeclineModalOpen] = useState(false);
@@ -626,6 +631,8 @@ const xmlContent = `<?xml version="1.0"?>
       }
       toast.success("Book deleted");
       await loadBooks();
+      await fetchAllBooks()
+
     } catch (error) {
       console.error("Error deleting book", error);
       toast.error("Unable to delete book.");
@@ -832,7 +839,7 @@ const xmlContent = `<?xml version="1.0"?>
               <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-muted-foreground">Dashboard views</h2>
               <div className="space-y-2">
                 {VIEWS.map(({ key, label, icon: Icon }) =>
-                  key === "super-admin" && !isSuperAdmin ? null : (
+                  key === "super-admin" && !isSuperAdmin ? null :  key === "super-admin" && !isSuperAdmin ? null:(
                     <button
                       key={key}
                       type="button"
@@ -980,7 +987,7 @@ const xmlContent = `<?xml version="1.0"?>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between gap-4 rounded-3xl border border-border/60 bg-surface p-5">
                       <div>
-                        <h2 className="text-xl font-semibold">Uploaded books</h2>
+                        <h2 className="text-xl font-semibold">My uploaded books</h2>
                         <p className="text-sm text-muted-foreground">Review the books you have added and their current performance.</p>
                       </div>
                     </div>
@@ -1077,6 +1084,17 @@ const xmlContent = `<?xml version="1.0"?>
                   </div>
                 </div>
               )}
+              {
+                view === "all-books" && isSuperAdmin && (
+                  <BookList
+                   allBooks={allBooks}
+                   bookStats={bookStats} 
+                   handleViewBook={handleViewBook}
+                   loadBookReport={loadBookReport} 
+                   handleDelete={handleDelete}
+                  />
+                )
+              }
 
               {view === "requests" && (
                 <div className="space-y-6">

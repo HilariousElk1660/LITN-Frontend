@@ -9,6 +9,9 @@ type BooksCtx = {
     setBookRequests: () => void;
     readersBooks: [];
     setReadersBooks: () => void;
+    allBooks: [];
+    setAllBooks: () => void;
+    fetchAllBooks: () => void;
 //   user: StoredUser | null;
 //   role: Role | null;
 //   isAdmin: boolean;       // true for 'admin' OR 'super-admin'
@@ -22,12 +25,16 @@ const Ctx = createContext<BooksCtx>({
   bookRequests: [],
   setBookRequests: ()=>{},
   readersBooks:[],
-  setReadersBooks: ()=>{}
+  setReadersBooks: ()=>{},
+  allBooks:[],
+  setAllBooks: ()=>{},
+  fetchAllBooks: ()=>{}
 });
 
 export function BooksProvider({ children }: { children: ReactNode }) {
   const [bookRequests,setBookRequests]  = useState([])
   const [readersBooks, setReadersBooks] = useState([])
+  const [allBooks,setAllBooks] = useState([])
   const {user, backendUrl} = useAuth()
 
   const base = backendUrl ;
@@ -62,14 +69,29 @@ export function BooksProvider({ children }: { children: ReactNode }) {
       }
   }
 
+  const fetchAllBooks = async () =>{
+    try{
+        const token = api.getToken()
+        const res = await fetch(`${base}/all_books`,{
+            'headers':{'Authorization': `Bearer ${token}`}
+        });
+        const data = await res.json()
+        setAllBooks(data)
+    
+      }catch(e){
+        console.error("error fetching user book requests",e)
+      }
+  }
+
   useEffect(()=>{
     fetchBookRequests()
     fetchReadersBooks()
+    fetchAllBooks()
   },[])
 
 
   return (
-    <Ctx.Provider value={{ bookRequests,setBookRequests, readersBooks, setReadersBooks }}>
+    <Ctx.Provider value={{ bookRequests,setBookRequests, readersBooks, setReadersBooks ,setAllBooks,allBooks, fetchAllBooks}}>
       {children}
     </Ctx.Provider>
   );
